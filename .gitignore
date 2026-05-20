@@ -15,6 +15,7 @@ Saved/
 .DS_Store
 .AppleDouble
 .LSOverride
+*.xcworkspace/
 
 # Windows
 Thumbs.db
