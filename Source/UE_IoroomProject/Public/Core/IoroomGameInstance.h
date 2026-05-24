@@ -28,7 +28,7 @@ public:
 	
 	// function called to GET level of rendering scalability
 	UFUNCTION(BlueprintCallable, Category = "Graphics")
-	int32 GetCurrentScalabilityLevel() const {return CurrentScalabilityLevel;};
+	int32 GetCurrentScalabilityLevel() const;
 	
 	// function called to GET the name of GPU detected
 	UFUNCTION(BlueprintCallable, Category = "Graphics")
