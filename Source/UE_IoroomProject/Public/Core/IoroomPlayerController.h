@@ -13,4 +13,7 @@ UCLASS()
 class UE_IOROOMPROJECT_API AIoroomPlayerController : public APlayerController
 {
 	GENERATED_BODY()
+	
+public:
+	AIoroomPlayerController();
 };
