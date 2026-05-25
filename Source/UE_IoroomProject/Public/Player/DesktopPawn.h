@@ -3,8 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputActionValue.h" // a reference value need the #include
 #include "GameFramework/Pawn.h"
 #include "DesktopPawn.generated.h"
+
+class USpringArmComponent;
+class UFloatingPawnMovement;
+class UInputAction;
+class UCameraComponent;
 
 UCLASS()
 class UE_IOROOMPROJECT_API ADesktopPawn : public APawn
@@ -12,17 +18,46 @@ class UE_IOROOMPROJECT_API ADesktopPawn : public APawn
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this pawn's properties
 	ADesktopPawn();
+	
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	
+	// Components
+	
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> SceneRoot;
+	
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USpringArmComponent> SpringArm;
+	
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UCameraComponent> Camera;
+	
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UFloatingPawnMovement> FloatingPawnMovement;
+	
+	// Input Actions
+	
+	UPROPERTY(EditDefaultsOnly, Category="Actions")
+	TObjectPtr<UInputAction> Move;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Actions")
+	TObjectPtr<UInputAction> Look;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Actions")
+	TObjectPtr<UInputAction> Pan;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Actions")
+	TObjectPtr<UInputAction> Zoom;
+	
+private:
+	
+	// functions bound to Input Actions
+	void Movement(const FInputActionValue& Value);
+	void LookAround(const FInputActionValue& Value);
+	void Panning(const FInputActionValue& Value);
+	void Zooming(const FInputActionValue& Value);
 };
