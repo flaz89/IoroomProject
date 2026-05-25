@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "IoroomPlayerController.generated.h"
 
+class UInputMappingContext;
 /**
  * 
  */
@@ -14,6 +15,9 @@ class UE_IOROOMPROJECT_API AIoroomPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 	
-public:
-	AIoroomPlayerController();
+protected:
+	virtual void BeginPlay() override;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputMappingContext> DefaultInputMappingContext;
 };
