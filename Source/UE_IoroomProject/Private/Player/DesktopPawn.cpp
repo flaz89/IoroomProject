@@ -86,9 +86,9 @@ void ADesktopPawn::Panning(const FInputActionValue& Value)
 	if (!Controller) return;
 	const FVector2D AxisValue = Value.Get<FVector2D>();
 	
-	const FRotator ControllerRotaton = Controller->GetControlRotation();
-	const FVector RightDirection = FRotationMatrix(ControllerRotaton).GetUnitAxis(EAxis::Y);
-	const FVector UpDirection = FRotationMatrix(ControllerRotaton).GetUnitAxis(EAxis::Z);
+	const FRotator ControllerRotation = Controller->GetControlRotation();
+	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
+	const FVector UpDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Z);
 	
 	AddMovementInput(RightDirection, AxisValue.X);
 	AddMovementInput(UpDirection, AxisValue.Y);
@@ -98,9 +98,9 @@ void ADesktopPawn::Zooming(const FInputActionValue& Value)
 {
 	if (!Controller) return;
 	const float ZoomFactor = Value.Get<float>();
-	const FRotator ControllerRotaton = Controller->GetControlRotation();
+	const FRotator ControllerRotation = Controller->GetControlRotation();
 	
-	const FVector ForwardDirection = FRotationMatrix(ControllerRotaton).GetUnitAxis(EAxis::X);
+	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
 	
 	AddMovementInput(ForwardDirection, ZoomFactor);
 }
