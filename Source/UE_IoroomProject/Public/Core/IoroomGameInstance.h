@@ -55,5 +55,4 @@ private:
 	
 	int32 DetectedVRAMMB{};
 	FString CachedGPUName{};
-	int32 CurrentScalabilityLevel{};
 };

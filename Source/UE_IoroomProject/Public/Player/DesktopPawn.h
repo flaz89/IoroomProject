@@ -53,6 +53,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Actions")
 	TObjectPtr<UInputAction> Zoom;
 	
+	// Properties
+	UPROPERTY(EditDefaultsOnly, Category="Zoom")
+	float ZoomSpeed;
+	
 private:
 	
 	// functions bound to Input Actions

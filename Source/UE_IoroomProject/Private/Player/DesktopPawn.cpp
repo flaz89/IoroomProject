@@ -27,8 +27,25 @@ ADesktopPawn::ADesktopPawn()
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	
 	FloatingPawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
+	
+	ZoomSpeed = 1.f;
+#if PLATFORM_WINDOWS
+	ZoomSpeed = 15.f
+#endif
 }
 
+void ADesktopPawn::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		PC->bShowMouseCursor = true;
+	}
+	
+}
+
+// functions Input and bound to Input Actions
 void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -46,18 +63,6 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	}
 }
 
-void ADesktopPawn::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
-	{
-		PC->bShowMouseCursor = true;
-	}
-	
-}
-
-// functions bound to Input Actions
 void ADesktopPawn::Movement(const FInputActionValue& Value)
 {
 	if (!Controller) return;
@@ -102,6 +107,6 @@ void ADesktopPawn::Zooming(const FInputActionValue& Value)
 	
 	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
 	
-	AddMovementInput(ForwardDirection, ZoomFactor);
+	AddMovementInput(ForwardDirection, ZoomFactor * ZoomSpeed);
 }
 
