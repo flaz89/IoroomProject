@@ -8,7 +8,14 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
 
-
+/*
+ * CONSTRUCTOR
+ * - set root component
+ * - set sprig arm and its bheaviour
+ * - set camera
+ * - set floating pawn movement component
+ * - chooses ZoomSpeed value based on OS
+ */
 ADesktopPawn::ADesktopPawn()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -28,10 +35,11 @@ ADesktopPawn::ADesktopPawn()
 	
 	FloatingPawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
 	
-	ZoomSpeed = 1.f;
-#if PLATFORM_WINDOWS
-	ZoomSpeed = 15.f
-#endif
+	// if mac value 5.f, if windows 20.f
+	ZoomSpeed = 5.f;
+	#if PLATFORM_WINDOWS
+		ZoomSpeed = 20.f;
+	#endif
 }
 
 void ADesktopPawn::BeginPlay()
@@ -40,9 +48,11 @@ void ADesktopPawn::BeginPlay()
 	
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		PC->bShowMouseCursor = true;
+		PC->bShowMouseCursor = true; // show cursor
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockOnCapture); // unlock cursor windows limit
+		PC->SetInputMode(InputMode); 
 	}
-	
 }
 
 // functions Input and bound to Input Actions
@@ -107,6 +117,11 @@ void ADesktopPawn::Zooming(const FInputActionValue& Value)
 	
 	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
 	
-	AddMovementInput(ForwardDirection, ZoomFactor * ZoomSpeed);
+	// negate windows value for scroll speed for correct movement
+	#if PLATFORM_WINDOWS
+	ZoomFactor = -ZoomFactor;
+	#endif
+	
+	AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);
 }
 
