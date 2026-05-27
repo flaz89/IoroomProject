@@ -83,6 +83,7 @@ private:
 	void Zooming(const FInputActionValue& Value);
 	void LeftClicking(const FInputActionValue& Value);
 	void LeftClickingHeld();
+	void LeftClickingReleased();
 	
 	// orbit properties
 	FVector OrbitPivot;

@@ -69,6 +69,7 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		// left click
 		EnhancedInputComponent->BindAction(LeftClick,ETriggerEvent::Started, this, &ADesktopPawn::LeftClicking);
 		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Triggered, this, &ADesktopPawn::LeftClickingHeld);
+		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Completed, this, &ADesktopPawn::LeftClickingReleased);
 	}
 	else
 	{
@@ -219,5 +220,12 @@ void ADesktopPawn::LeftClickingHeld()
 				break;
 		}
 	}
+}
+
+void ADesktopPawn::LeftClickingReleased()
+{
+	LMBState = ELMBState::Idle;
+	bOrbitAligning = false;
+	UE_LOG(LogTemp, Log, TEXT("LMB State: %d"), LMBState);
 }
 
