@@ -226,6 +226,5 @@ void ADesktopPawn::LeftClickingReleased()
 {
 	LMBState = ELMBState::Idle;
 	bOrbitAligning = false;
-	UE_LOG(LogTemp, Log, TEXT("LMB State: %d"), LMBState);
 }
 
