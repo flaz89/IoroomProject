@@ -173,7 +173,11 @@ void ADesktopPawn::LeftClickingHeld()
 						{
 							// set distance vector between Player and Orbit
 							OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
+							
+							const FVector InitForward = FRotationMatrix(Controller->GetControlRotation()).GetUnitAxis(EAxis::X);
+							OrbitVirtualPivot = GetActorLocation() + InitForward * OrbitArmLength;
 							bOrbitAligning = true;
+							OrbitAlignAlpha = 0.f;
 							LMBState = ELMBState::Orbiting;
 						}
 					}
@@ -190,31 +194,24 @@ void ADesktopPawn::LeftClickingHeld()
 					float DeltaX;
 					float DeltaY;
 					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
-					if (bOrbitAligning) { DeltaX = 0.f; DeltaY = 0.f; }
+
+					if (bOrbitAligning)
+					{
+						OrbitAlignAlpha = FMath::Min(OrbitAlignAlpha + GetWorld()->GetDeltaSeconds() * 4.f, 1.f); //4.f set blending velocity
+						if (OrbitAlignAlpha >= 1.f) bOrbitAligning = false;
+					}
+					
+					const FVector CurrentPivot = bOrbitAligning ? FMath::Lerp(OrbitVirtualPivot, OrbitPivot, FMath::InterpEaseOut(0.f, 1.f, OrbitAlignAlpha, 3.f)) : OrbitPivot;
 					
 					//count current rotation, add mouse deltaX,Y and obtain next rotation
 					const FRotator NextRotation(
-						FMath::Clamp(CurrentRotation.Pitch + DeltaY * OrbitSensitivity, -89.f, 89.f),
-						CurrentRotation.Yaw + DeltaX * OrbitSensitivity,
-						0.f
-						);
-				
-					// calculate the forward vector used on next rotation and the new actor location ancora un pò è evidente
-					const FVector NewForwardDirection = FRotationMatrix(NextRotation).GetUnitAxis(EAxis::X);
-					const FVector NextLocation = OrbitPivot - NewForwardDirection * OrbitArmLength;
-				
-					Controller->SetControlRotation(NextRotation);
+						  FMath::Clamp(CurrentRotation.Pitch + DeltaY * OrbitSensitivity, -89.f, 89.f),
+						  CurrentRotation.Yaw + DeltaX * OrbitSensitivity,
+						  0.f
+					  );
 					
-					if (bOrbitAligning)
-					{
-						const FVector InterpLocation = FMath::VInterpTo(GetActorLocation(), NextLocation, GetWorld()->GetDeltaSeconds(), 10.f);
-						if (FVector::Dist(InterpLocation, NextLocation) < 1.f) bOrbitAligning = false;
-						SetActorLocation(InterpLocation);
-					} 
-					else
-					{
-						SetActorLocation(NextLocation);
-					}
+					Controller->SetControlRotation(NextRotation);
+					SetActorLocation(CurrentPivot - FRotationMatrix(NextRotation).GetUnitAxis(EAxis::X) * OrbitArmLength);
 					
 					break;
 				}

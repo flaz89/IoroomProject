@@ -86,9 +86,11 @@ private:
 	
 	// orbit properties
 	FVector OrbitPivot;
+	FVector OrbitVirtualPivot;
 	float OrbitArmLength;
 	FVector2D MouseInitPosition;
 	bool bOrbitAligning = false;
+	float OrbitAlignAlpha;
 	
 	ELMBState LMBState = ELMBState::Idle;
 };
