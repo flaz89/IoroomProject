@@ -7,6 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "DesktopPawn.generated.h"
 
+class AFurnitureActor;
 class USpringArmComponent;
 class UFloatingPawnMovement;
 class UInputAction;
@@ -92,6 +93,10 @@ private:
 	FVector2D MouseInitPosition;
 	bool bOrbitAligning = false;
 	float OrbitAlignAlpha;
+	
+	// Furniture actors
+	TObjectPtr<AFurnitureActor> ClickedFurniture;
+	TObjectPtr<AFurnitureActor> SelectedFurniture;
 	
 	ELMBState LMBState = ELMBState::Idle;
 };

@@ -13,8 +13,6 @@ AFurnitureActor::AFurnitureActor()
 	RootComponent = FurnitureMesh;
 }
 
-
-
 void AFurnitureActor::BeginPlay()
 {
 	Super::BeginPlay();
@@ -33,10 +31,15 @@ void AFurnitureActor::OnUnHovered()
 
 void AFurnitureActor::OnSelected()
 {
+	FurnitureMesh->SetRenderCustomDepth(true);
+	FurnitureMesh->SetCustomDepthStencilValue(1);
+	bIsSelected = true;
 }
 
 void AFurnitureActor::OnDeselected()
 {
+	FurnitureMesh->SetRenderCustomDepth(false);
+	bIsSelected = false;
 }
 
 

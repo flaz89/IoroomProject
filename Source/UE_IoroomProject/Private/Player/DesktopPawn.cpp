@@ -4,6 +4,7 @@
 #include "Player/DesktopPawn.h"
 
 #include "EnhancedInputComponent.h"
+#include "Actors/FurnitureActor.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -129,6 +130,13 @@ void ADesktopPawn::Zooming(const FInputActionValue& Value)
 	AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);
 }
 
+/*
+ * Left click checks if cursor hits something, 
+ * if true catchs mouse moves and save mouse initial position,
+ * set OritPivot at click location,
+ * set LMBState to Pressed (if on mac Alt is pressed LMBState stay Idle)
+ * set DesktopPawn pointer SelectedFurniture with actor hit by cursor
+ */
 void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 {
 	if (!Controller) return;
@@ -136,25 +144,36 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 	const APlayerController* PlayerController = Cast<APlayerController>(Controller);
 	if (PlayerController->GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
 	{
-		
 		float MouseX;
 		float MouseY;
 		if (PlayerController->GetMousePosition(MouseX, MouseY))
 		{
-			OrbitPivot = HitResult.ImpactPoint; // set orbit pivot location
-			MouseInitPosition = FVector2D(MouseX, MouseY); // set inital mouse location at click
+			OrbitPivot = HitResult.ImpactPoint; 
+			MouseInitPosition = FVector2D(MouseX, MouseY);
 					
 			#if PLATFORM_MAC
 					if (PlayerController->IsInputKeyDown(EKeys::LeftAlt)) return; // on mac if alt for panning is pressed do nothing
 			#endif
 			
-			LMBState = ELMBState::Pressed; // set LMB to pressed state
+			LMBState = ELMBState::Pressed;
 		}
+		ClickedFurniture = Cast<AFurnitureActor>(HitResult.GetActor());
 		DrawDebugSphere(GetWorld(), OrbitPivot, 16, 16, FColor::Red, false, 2.f);
-		
 	}
 }
 
+/*
+ * based on LMBState always enter on PRESSED,
+ * catchs mouse moves and verify if the movement is > then OrbitDragThreshold,
+ * if so set the distance between player and OrbitPivot, then set a OrbitVirtualPivot,
+ * enable flag bool to AlignOrbit,
+ * set LMBState to enter Orbit mode
+ * 
+ * in ORBITING state catchs mouse moves,
+ * if OrbitAligning is true set orbit OrbitAlignAlpha value, if >=1 set OrbitALigning back to false,
+ * define and init CurrentPivot then define NextRotation to apply clamped between -89/89,
+ * set orbit rotation and player location
+ */
 void ADesktopPawn::LeftClickingHeld()
 {
 	APlayerController* PlayerController = Cast<APlayerController>(Controller);
@@ -168,11 +187,10 @@ void ADesktopPawn::LeftClickingHeld()
 					float MouseY;
 					if (PlayerController->GetMousePosition(MouseX, MouseY))
 					{
-						// if mouse moved > OrbitDragThreshold enter in Orbiting mode
 						const FVector2D MouseCurrentPosition = FVector2D(MouseX, MouseY);
+						
 						if ((MouseCurrentPosition - MouseInitPosition).Size() > OrbitDragThreshold)
 						{
-							// set distance vector between Player and Orbit
 							OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
 							
 							const FVector InitForward = FRotationMatrix(Controller->GetControlRotation()).GetUnitAxis(EAxis::X);
@@ -190,8 +208,7 @@ void ADesktopPawn::LeftClickingHeld()
 					if (!Controller) return;
 					
 					const FRotator CurrentRotation = Controller->GetControlRotation();
-				
-					// obtain mouse delta movement
+					
 					float DeltaX;
 					float DeltaY;
 					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
@@ -224,7 +241,13 @@ void ADesktopPawn::LeftClickingHeld()
 
 void ADesktopPawn::LeftClickingReleased()
 {
-	LMBState = ELMBState::Idle;
+	if (LMBState == ELMBState::Pressed)
+	{
+		if (SelectedFurniture) SelectedFurniture->OnDeselected();
+		SelectedFurniture = ClickedFurniture;
+		if (SelectedFurniture) SelectedFurniture->OnSelected();
+	}
 	bOrbitAligning = false;
+	LMBState = ELMBState::Idle;
 }
 
