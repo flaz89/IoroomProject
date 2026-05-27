@@ -11,7 +11,7 @@
 /*
  * CONSTRUCTOR
  * - set root component
- * - set sprig arm and its bheaviour
+ * - set sprigarm and its bheaviour
  * - set camera
  * - set floating pawn movement component
  * - chooses ZoomSpeed value based on OS
@@ -66,6 +66,9 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, this, &ADesktopPawn::LookAround);
 		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Triggered, this, &ADesktopPawn::Panning);
 		EnhancedInputComponent->BindAction(Zoom, ETriggerEvent::Triggered, this, &ADesktopPawn::Zooming);
+		// left click
+		EnhancedInputComponent->BindAction(LeftClick,ETriggerEvent::Started, this, &ADesktopPawn::LeftClicking);
+		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Triggered, this, &ADesktopPawn::LeftClickingHeld);
 	}
 	else
 	{
@@ -112,7 +115,7 @@ void ADesktopPawn::Panning(const FInputActionValue& Value)
 void ADesktopPawn::Zooming(const FInputActionValue& Value)
 {
 	if (!Controller) return;
-	const float ZoomFactor = Value.Get<float>();
+	float ZoomFactor = Value.Get<float>();
 	const FRotator ControllerRotation = Controller->GetControlRotation();
 	
 	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
@@ -123,5 +126,101 @@ void ADesktopPawn::Zooming(const FInputActionValue& Value)
 	#endif
 	
 	AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);
+}
+
+void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
+{
+	if (!Controller) return;
+	FHitResult HitResult;
+	const APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	if (PlayerController->GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
+	{
+		
+		float MouseX;
+		float MouseY;
+		if (PlayerController->GetMousePosition(MouseX, MouseY))
+		{
+			OrbitPivot = HitResult.ImpactPoint; // set orbit pivot location
+			MouseInitPosition = FVector2D(MouseX, MouseY); // set inital mouse location at click
+					
+			#if PLATFORM_MAC
+					if (PlayerController->IsInputKeyDown(EKeys::LeftAlt)) return; // on mac if alt for panning is pressed do nothing
+			#endif
+			
+			LMBState = ELMBState::Pressed; // set LMB to pressed state
+		}
+		DrawDebugSphere(GetWorld(), OrbitPivot, 16, 16, FColor::Red, false, 2.f);
+		
+	}
+}
+
+void ADesktopPawn::LeftClickingHeld()
+{
+	APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	if (PlayerController)
+	{
+		switch (LMBState) // switch based on LMB State 
+		{
+			case ELMBState::Pressed:
+				{
+					float MouseX;
+					float MouseY;
+					if (PlayerController->GetMousePosition(MouseX, MouseY))
+					{
+						// if mouse moved > OrbitDragThreshold enter in Orbiting mode
+						const FVector2D MouseCurrentPosition = FVector2D(MouseX, MouseY);
+						if ((MouseCurrentPosition - MouseInitPosition).Size() > OrbitDragThreshold)
+						{
+							// set distance vector between Player and Orbit
+							OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
+							bOrbitAligning = true;
+							LMBState = ELMBState::Orbiting;
+						}
+					}
+					break;
+				}
+				
+			case ELMBState::Orbiting:
+				{
+					if (!Controller) return;
+					
+					const FRotator CurrentRotation = Controller->GetControlRotation();
+				
+					// obtain mouse delta movement
+					float DeltaX;
+					float DeltaY;
+					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
+					if (bOrbitAligning) { DeltaX = 0.f; DeltaY = 0.f; }
+					
+					//count current rotation, add mouse deltaX,Y and obtain next rotation
+					const FRotator NextRotation(
+						FMath::Clamp(CurrentRotation.Pitch + DeltaY * OrbitSensitivity, -89.f, 89.f),
+						CurrentRotation.Yaw + DeltaX * OrbitSensitivity,
+						0.f
+						);
+				
+					// calculate the forward vector used on next rotation and the new actor location ancora un pò è evidente
+					const FVector NewForwardDirection = FRotationMatrix(NextRotation).GetUnitAxis(EAxis::X);
+					const FVector NextLocation = OrbitPivot - NewForwardDirection * OrbitArmLength;
+				
+					Controller->SetControlRotation(NextRotation);
+					
+					if (bOrbitAligning)
+					{
+						const FVector InterpLocation = FMath::VInterpTo(GetActorLocation(), NextLocation, GetWorld()->GetDeltaSeconds(), 10.f);
+						if (FVector::Dist(InterpLocation, NextLocation) < 1.f) bOrbitAligning = false;
+						SetActorLocation(InterpLocation);
+					} 
+					else
+					{
+						SetActorLocation(NextLocation);
+					}
+					
+					break;
+				}
+			default:
+				break;
+		}
+	}
 }
 

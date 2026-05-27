@@ -12,6 +12,14 @@ class UFloatingPawnMovement;
 class UInputAction;
 class UCameraComponent;
 
+// Enum left mouse button click state
+enum class ELMBState : uint8
+{
+	Idle,
+	Pressed,
+	Orbiting
+};
+
 UCLASS()
 class UE_IOROOMPROJECT_API ADesktopPawn : public APawn
 {
@@ -53,9 +61,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Actions")
 	TObjectPtr<UInputAction> Zoom;
 	
+	UPROPERTY(EditDefaultsOnly, Category="Actions")
+	TObjectPtr<UInputAction> LeftClick;
+	
 	// Properties
 	UPROPERTY(EditDefaultsOnly, Category="Zoom")
 	float ZoomSpeed;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Orbit")
+	float OrbitDragThreshold = 5.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Orbit")
+	float OrbitSensitivity = 1.f;
 	
 private:
 	
@@ -64,4 +81,14 @@ private:
 	void LookAround(const FInputActionValue& Value);
 	void Panning(const FInputActionValue& Value);
 	void Zooming(const FInputActionValue& Value);
+	void LeftClicking(const FInputActionValue& Value);
+	void LeftClickingHeld();
+	
+	// orbit properties
+	FVector OrbitPivot;
+	float OrbitArmLength;
+	FVector2D MouseInitPosition;
+	bool bOrbitAligning = false;
+	
+	ELMBState LMBState = ELMBState::Idle;
 };
