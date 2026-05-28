@@ -28,6 +28,7 @@ class UE_IOROOMPROJECT_API ADesktopPawn : public APawn
 
 public:
 	ADesktopPawn();
+	void Tick(float DeltaTime) override;
 	
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -93,8 +94,9 @@ private:
 	FVector2D MouseInitPosition;
 	bool bOrbitAligning = false;
 	float OrbitAlignAlpha;
-	
+	bool bCameraControlActive = false;
 	// Furniture actors
+	TObjectPtr<AFurnitureActor> HoveredFurniture;
 	TObjectPtr<AFurnitureActor> ClickedFurniture;
 	TObjectPtr<AFurnitureActor> SelectedFurniture;
 	

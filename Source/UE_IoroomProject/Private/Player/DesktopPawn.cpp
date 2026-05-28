@@ -19,7 +19,7 @@
  */
 ADesktopPawn::ADesktopPawn()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 	
 	SceneRoot = CreateDefaultSubobject<USceneComponent>("RootComponent");
 	RootComponent = SceneRoot;
@@ -41,6 +41,31 @@ ADesktopPawn::ADesktopPawn()
 	#if PLATFORM_WINDOWS
 		ZoomSpeed = 20.f;
 	#endif
+}
+
+void ADesktopPawn::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		FHitResult HitResult;
+		if (PC->GetHitResultUnderCursor(ECC_Visibility, false, HitResult ))
+		{
+			AFurnitureActor* HitActor = Cast<AFurnitureActor>(HitResult.GetActor());
+			
+			if (HitActor != HoveredFurniture)
+			{
+				if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
+				if (HitActor != nullptr && HitActor != SelectedFurniture && !bCameraControlActive) HitActor->OnHovered();
+				HoveredFurniture = HitActor;
+			}
+		} 
+		else
+		{
+			if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
+		}
+	}
 }
 
 void ADesktopPawn::BeginPlay()
@@ -95,6 +120,7 @@ void ADesktopPawn::Movement(const FInputActionValue& Value)
 void ADesktopPawn::LookAround(const FInputActionValue& Value)
 {
 	if (!Controller) return;
+	bCameraControlActive = true;
 	const FVector2D AxisValue = Value.Get<FVector2D>();
 
 	AddControllerYawInput(AxisValue.X);
@@ -104,6 +130,7 @@ void ADesktopPawn::LookAround(const FInputActionValue& Value)
 void ADesktopPawn::Panning(const FInputActionValue& Value)
 {
 	if (!Controller) return;
+	bCameraControlActive = true;
 	const FVector2D AxisValue = Value.Get<FVector2D>();
 	
 	const FRotator ControllerRotation = Controller->GetControlRotation();
@@ -191,9 +218,8 @@ void ADesktopPawn::LeftClickingHeld()
 						
 						if ((MouseCurrentPosition - MouseInitPosition).Size() > OrbitDragThreshold)
 						{
-							OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
-							
 							const FVector InitForward = FRotationMatrix(Controller->GetControlRotation()).GetUnitAxis(EAxis::X);
+							OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
 							OrbitVirtualPivot = GetActorLocation() + InitForward * OrbitArmLength;
 							bOrbitAligning = true;
 							OrbitAlignAlpha = 0.f;
@@ -207,6 +233,7 @@ void ADesktopPawn::LeftClickingHeld()
 				{
 					if (!Controller) return;
 					
+					bCameraControlActive = true;
 					const FRotator CurrentRotation = Controller->GetControlRotation();
 					
 					float DeltaX;
@@ -221,7 +248,6 @@ void ADesktopPawn::LeftClickingHeld()
 					
 					const FVector CurrentPivot = bOrbitAligning ? FMath::Lerp(OrbitVirtualPivot, OrbitPivot, FMath::InterpEaseOut(0.f, 1.f, OrbitAlignAlpha, 3.f)) : OrbitPivot;
 					
-					//count current rotation, add mouse deltaX,Y and obtain next rotation
 					const FRotator NextRotation(
 						  FMath::Clamp(CurrentRotation.Pitch + DeltaY * OrbitSensitivity, -89.f, 89.f),
 						  CurrentRotation.Yaw + DeltaX * OrbitSensitivity,
@@ -247,6 +273,7 @@ void ADesktopPawn::LeftClickingReleased()
 		SelectedFurniture = ClickedFurniture;
 		if (SelectedFurniture) SelectedFurniture->OnSelected();
 	}
+	bCameraControlActive = false;
 	bOrbitAligning = false;
 	LMBState = ELMBState::Idle;
 }
