@@ -196,6 +196,13 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 			{
 				LMBState = ELMBState::Dragging;
 				DragPlaneZ = SelectedFurniture->GetActorLocation().Z;
+				AccumulatedDragDelta = FVector2D::ZeroVector;
+				
+				FVector WorldLocation;
+				FVector WorldDirection;
+				PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
+				float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
+				DragOffset = SelectedFurniture->GetActorLocation() - (WorldLocation + t * WorldDirection);
 			}
 			else
 			{
@@ -278,20 +285,24 @@ void ADesktopPawn::LeftClickingHeld()
 			
 			case ELMBState::Dragging:
 				{
-					float DeltaX;
-					float DeltaY;
-					if (PlayerController->GetMousePosition(DeltaX, DeltaY))
+					float MouseX;
+					float MouseY;
+					if (PlayerController->GetMousePosition(MouseX, MouseY))
 					{
+						float DeltaX;
+						float DeltaY;
+						PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
 						AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
+						
 						if (AccumulatedDragDelta.Size() > OrbitDragThreshold)
 						{
 							FVector WorldLocation;
 							FVector WorldDirection;
-							PlayerController->DeprojectScreenPositionToWorld(DeltaX, DeltaY, WorldLocation, WorldDirection);
+							PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
 
 							const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
 								
-							SelectedFurniture->SetActorLocation(WorldLocation + t * WorldDirection);
+							SelectedFurniture->SetActorLocation(WorldLocation + t * WorldDirection + DragOffset);
 						}
 					}
 					break;
