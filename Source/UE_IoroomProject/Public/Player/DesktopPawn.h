@@ -103,6 +103,7 @@ private:
 	// drag properties
 	float DragPlaneZ;
 	FVector DragOffset;
+	bool bDragActive = false;
 	
 	// Furniture actors
 	TObjectPtr<AFurnitureActor> HoveredFurniture;

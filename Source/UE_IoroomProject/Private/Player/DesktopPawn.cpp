@@ -197,11 +197,18 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 				LMBState = ELMBState::Dragging;
 				DragPlaneZ = SelectedFurniture->GetActorLocation().Z;
 				AccumulatedDragDelta = FVector2D::ZeroVector;
+				bDragActive = false;
 				
 				FVector WorldLocation;
 				FVector WorldDirection;
 				PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
 				float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
+				
+				UE_LOG(LogTemp, Warning, TEXT("Drag | MousePos: X=%.1f Y=%.1f | Target: %s | Current: %s"),
+					  MouseX, MouseY,
+					  *(WorldLocation + t * WorldDirection + DragOffset).ToString(),
+					  *SelectedFurniture->GetActorLocation().ToString());
+				
 				DragOffset = SelectedFurniture->GetActorLocation() - (WorldLocation + t * WorldDirection);
 			}
 			else
@@ -285,23 +292,28 @@ void ADesktopPawn::LeftClickingHeld()
 			
 			case ELMBState::Dragging:
 				{
-					float MouseX;
-					float MouseY;
-					if (PlayerController->GetMousePosition(MouseX, MouseY))
+					float DeltaX;
+					float DeltaY;
+					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
+					AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
+					
+					if (!bDragActive && AccumulatedDragDelta.Size() > OrbitDragThreshold)
 					{
-						float DeltaX;
-						float DeltaY;
-						PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
-						AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
-						
-						if (AccumulatedDragDelta.Size() > OrbitDragThreshold)
+						bDragActive = true;
+					}
+					
+					if (bDragActive)
+					{
+						float MouseX;
+						float MouseY;
+						if (PlayerController->GetMousePosition(MouseX, MouseY))
 						{
 							FVector WorldLocation;
 							FVector WorldDirection;
 							PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
 
 							const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
-								
+							
 							SelectedFurniture->SetActorLocation(WorldLocation + t * WorldDirection + DragOffset);
 						}
 					}
@@ -322,6 +334,7 @@ void ADesktopPawn::LeftClickingReleased()
 		if (SelectedFurniture) SelectedFurniture->OnSelected();
 	}
 	bOrbitAligning = false;
+	bDragActive = false;
 	LMBState = ELMBState::Idle;
 }
 
