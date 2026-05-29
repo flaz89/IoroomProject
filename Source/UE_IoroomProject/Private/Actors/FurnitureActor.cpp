@@ -10,6 +10,7 @@ AFurnitureActor::AFurnitureActor()
 	PrimaryActorTick.bCanEverTick = false;
 	
 	FurnitureMesh = CreateDefaultSubobject<UStaticMeshComponent>("FurnitureMesh");
+	FurnitureMesh->SetMobility(EComponentMobility::Movable);
 	RootComponent = FurnitureMesh;
 }
 

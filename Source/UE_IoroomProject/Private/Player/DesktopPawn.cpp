@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Splines/SplineMath.h"
 
 /*
  * CONSTRUCTOR
@@ -89,10 +90,19 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		EnhancedInputComponent->BindAction(Move, ETriggerEvent::Triggered, this, &ADesktopPawn::Movement);
-		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, this, &ADesktopPawn::LookAround);
-		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Triggered, this, &ADesktopPawn::Panning);
 		EnhancedInputComponent->BindAction(Zoom, ETriggerEvent::Triggered, this, &ADesktopPawn::Zooming);
-		// left click
+		
+		// RMB
+		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, this, &ADesktopPawn::LookAround);
+		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Started, this, &ADesktopPawn::OnCameraControlStarted);
+		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Completed, this, &ADesktopPawn::OnCameraControlStopped);
+		
+		// MMB (Mac = left alt + LMB)
+		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Triggered, this, &ADesktopPawn::Panning);
+		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Started, this, &ADesktopPawn::OnCameraControlStarted);
+		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Completed, this, &ADesktopPawn::OnCameraControlStopped);
+		
+		// LMB
 		EnhancedInputComponent->BindAction(LeftClick,ETriggerEvent::Started, this, &ADesktopPawn::LeftClicking);
 		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Triggered, this, &ADesktopPawn::LeftClickingHeld);
 		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Completed, this, &ADesktopPawn::LeftClickingReleased);
@@ -182,7 +192,15 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 					if (PlayerController->IsInputKeyDown(EKeys::LeftAlt)) return; // on mac if alt for panning is pressed do nothing
 			#endif
 			
-			LMBState = ELMBState::Pressed;
+			if (SelectedFurniture && HitResult.GetActor() == SelectedFurniture)
+			{
+				LMBState = ELMBState::Dragging;
+				DragPlaneZ = SelectedFurniture->GetActorLocation().Z;
+			}
+			else
+			{
+				LMBState = ELMBState::Pressed;
+			}
 		}
 		ClickedFurniture = Cast<AFurnitureActor>(HitResult.GetActor());
 		DrawDebugSphere(GetWorld(), OrbitPivot, 16, 16, FColor::Red, false, 2.f);
@@ -233,7 +251,6 @@ void ADesktopPawn::LeftClickingHeld()
 				{
 					if (!Controller) return;
 					
-					bCameraControlActive = true;
 					const FRotator CurrentRotation = Controller->GetControlRotation();
 					
 					float DeltaX;
@@ -259,6 +276,27 @@ void ADesktopPawn::LeftClickingHeld()
 					
 					break;
 				}
+			
+			case ELMBState::Dragging:
+				{
+					float MouseX;
+					float MouseY;
+					if (PlayerController->GetMousePosition(MouseX, MouseY))
+					{
+						const FVector2D MouseCurrentPosition = FVector2D(MouseX, MouseY);
+						if ((MouseCurrentPosition - MouseInitPosition).Size() > OrbitDragThreshold)
+						{
+							FVector WorldLocation;
+							FVector WorldDirection;
+							PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
+
+							const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
+								
+							SelectedFurniture->SetActorLocation(WorldLocation + t * WorldDirection);
+						}
+					}
+					break;
+				}
 			default:
 				break;
 		}
@@ -273,8 +311,17 @@ void ADesktopPawn::LeftClickingReleased()
 		SelectedFurniture = ClickedFurniture;
 		if (SelectedFurniture) SelectedFurniture->OnSelected();
 	}
-	bCameraControlActive = false;
 	bOrbitAligning = false;
 	LMBState = ELMBState::Idle;
+}
+
+void ADesktopPawn::OnCameraControlStarted()
+{
+	bCameraControlActive = true;
+}
+
+void ADesktopPawn::OnCameraControlStopped()
+{
+	bCameraControlActive = false;
 }
 

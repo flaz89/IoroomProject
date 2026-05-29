@@ -18,7 +18,8 @@ enum class ELMBState : uint8
 {
 	Idle,
 	Pressed,
-	Orbiting
+	Orbiting,
+	Dragging
 };
 
 UCLASS()
@@ -86,6 +87,8 @@ private:
 	void LeftClicking(const FInputActionValue& Value);
 	void LeftClickingHeld();
 	void LeftClickingReleased();
+	void OnCameraControlStarted();
+	void OnCameraControlStopped();
 	
 	// orbit properties
 	FVector OrbitPivot;
@@ -95,6 +98,11 @@ private:
 	bool bOrbitAligning = false;
 	float OrbitAlignAlpha;
 	bool bCameraControlActive = false;
+	
+	// drag properties
+	float DragPlaneZ;
+	FVector DragOffset;
+	
 	// Furniture actors
 	TObjectPtr<AFurnitureActor> HoveredFurniture;
 	TObjectPtr<AFurnitureActor> ClickedFurniture;

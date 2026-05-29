@@ -30,5 +30,4 @@ protected:
 	
 private:
 	bool bIsSelected = false;
-	
 };
