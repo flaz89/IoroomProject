@@ -278,16 +278,16 @@ void ADesktopPawn::LeftClickingHeld()
 			
 			case ELMBState::Dragging:
 				{
-					float MouseX;
-					float MouseY;
-					if (PlayerController->GetMousePosition(MouseX, MouseY))
+					float DeltaX;
+					float DeltaY;
+					if (PlayerController->GetMousePosition(DeltaX, DeltaY))
 					{
-						const FVector2D MouseCurrentPosition = FVector2D(MouseX, MouseY);
-						if ((MouseCurrentPosition - MouseInitPosition).Size() > OrbitDragThreshold)
+						AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
+						if (AccumulatedDragDelta.Size() > OrbitDragThreshold)
 						{
 							FVector WorldLocation;
 							FVector WorldDirection;
-							PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
+							PlayerController->DeprojectScreenPositionToWorld(DeltaX, DeltaY, WorldLocation, WorldDirection);
 
 							const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
 								
