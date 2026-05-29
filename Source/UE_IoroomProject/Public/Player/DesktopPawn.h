@@ -95,6 +95,7 @@ private:
 	FVector OrbitVirtualPivot;
 	float OrbitArmLength;
 	FVector2D MouseInitPosition;
+	FVector2D AccumulatedDragDelta;
 	bool bOrbitAligning = false;
 	float OrbitAlignAlpha;
 	bool bCameraControlActive = false;

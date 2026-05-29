@@ -200,6 +200,7 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 			else
 			{
 				LMBState = ELMBState::Pressed;
+				AccumulatedDragDelta = FVector2D::ZeroVector;
 			}
 		}
 		ClickedFurniture = Cast<AFurnitureActor>(HitResult.GetActor());
@@ -228,21 +229,19 @@ void ADesktopPawn::LeftClickingHeld()
 		{
 			case ELMBState::Pressed:
 				{
-					float MouseX;
-					float MouseY;
-					if (PlayerController->GetMousePosition(MouseX, MouseY))
+					float DeltaX;
+					float DeltaY;
+					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
+					AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
+
+					if (AccumulatedDragDelta.Size() > OrbitDragThreshold)
 					{
-						const FVector2D MouseCurrentPosition = FVector2D(MouseX, MouseY);
-						
-						if ((MouseCurrentPosition - MouseInitPosition).Size() > OrbitDragThreshold)
-						{
-							const FVector InitForward = FRotationMatrix(Controller->GetControlRotation()).GetUnitAxis(EAxis::X);
-							OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
-							OrbitVirtualPivot = GetActorLocation() + InitForward * OrbitArmLength;
-							bOrbitAligning = true;
-							OrbitAlignAlpha = 0.f;
-							LMBState = ELMBState::Orbiting;
-						}
+						const FVector InitForward = FRotationMatrix(Controller->GetControlRotation()).GetUnitAxis(EAxis::X);
+						OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
+						OrbitVirtualPivot = GetActorLocation() + InitForward * OrbitArmLength;
+						bOrbitAligning = true;
+						OrbitAlignAlpha = 0.f;
+						LMBState = ELMBState::Orbiting;
 					}
 					break;
 				}
