@@ -8,6 +8,8 @@
 AFurnitureActor::AFurnitureActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	SetReplicates(true);
+	SetReplicatingMovement(true);
 	
 	FurnitureMesh = CreateDefaultSubobject<UStaticMeshComponent>("FurnitureMesh");
 	FurnitureMesh->SetMobility(EComponentMobility::Movable);

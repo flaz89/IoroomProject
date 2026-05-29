@@ -47,24 +47,34 @@ ADesktopPawn::ADesktopPawn()
 void ADesktopPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		FHitResult HitResult;
 		if (PC->GetHitResultUnderCursor(ECC_Visibility, false, HitResult ))
 		{
 			AFurnitureActor* HitActor = Cast<AFurnitureActor>(HitResult.GetActor());
-			
+
 			if (HitActor != HoveredFurniture)
 			{
 				if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
 				if (HitActor != nullptr && HitActor != SelectedFurniture && !bCameraControlActive) HitActor->OnHovered();
 				HoveredFurniture = HitActor;
 			}
-		} 
+		}
 		else
 		{
 			if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
+		}
+
+		if (LMBState == ELMBState::Dragging && bDragActive)
+		{
+			const FVector2D VirtualMousePos = MouseInitPosition + FVector2D(AccumulatedDragDelta.X, -AccumulatedDragDelta.Y);
+			FVector WorldLocation;
+			FVector WorldDirection;
+			PC->DeprojectScreenPositionToWorld(VirtualMousePos.X, VirtualMousePos.Y, WorldLocation, WorldDirection);
+			const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
+			SelectedFurniture->SetActorLocation(WorldLocation + t * WorldDirection + DragOffset);
 		}
 	}
 }
@@ -198,6 +208,7 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 				DragPlaneZ = SelectedFurniture->GetActorLocation().Z;
 				AccumulatedDragDelta = FVector2D::ZeroVector;
 				bDragActive = false;
+				UE_LOG(LogTemp, Warning, TEXT("LeftClicking FIRED - LMBState was: %d"), (int)LMBState);
 				
 				FVector WorldLocation;
 				FVector WorldDirection;
@@ -296,27 +307,10 @@ void ADesktopPawn::LeftClickingHeld()
 					float DeltaY;
 					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
 					AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
-					
-					if (!bDragActive && AccumulatedDragDelta.Size() > OrbitDragThreshold)
-					{
-						bDragActive = true;
-					}
-					
-					if (bDragActive)
-					{
-						float MouseX;
-						float MouseY;
-						if (PlayerController->GetMousePosition(MouseX, MouseY))
-						{
-							FVector WorldLocation;
-							FVector WorldDirection;
-							PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
 
-							const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
-							
-							SelectedFurniture->SetActorLocation(WorldLocation + t * WorldDirection + DragOffset);
-						}
-					}
+					if (!bDragActive && AccumulatedDragDelta.Size() > OrbitDragThreshold)
+						bDragActive = true;
+
 					break;
 				}
 			default:
@@ -336,6 +330,7 @@ void ADesktopPawn::LeftClickingReleased()
 	bOrbitAligning = false;
 	bDragActive = false;
 	LMBState = ELMBState::Idle;
+	UE_LOG(LogTemp, Warning, TEXT("LeftClickingReleased - LMBState: %d"), (int)LMBState);
 }
 
 void ADesktopPawn::OnCameraControlStarted()
