@@ -8,7 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "Splines/SplineMath.h"
+#include "PhysicsEngine/PhysicsHandleComponent.h"
 
 /*
  * CONSTRUCTOR
@@ -36,6 +36,7 @@ ADesktopPawn::ADesktopPawn()
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	
 	FloatingPawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
+	PhysicsHandle = CreateDefaultSubobject<UPhysicsHandleComponent>("PhysicsHandle");
 	
 	// if mac value 5.f, if windows 20.f
 	ZoomSpeed = 5.f;
@@ -48,35 +49,66 @@ void ADesktopPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
-		FHitResult HitResult;
-		if (PC->GetHitResultUnderCursor(ECC_Visibility, false, HitResult ))
-		{
-			AFurnitureActor* HitActor = Cast<AFurnitureActor>(HitResult.GetActor());
+		UpdateHover(PlayerController);
+		UpdateDrag(PlayerController);
+		UpdateCursor(PlayerController);
+	}
+}
 
-			if (HitActor != HoveredFurniture)
-			{
-				if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
-				if (HitActor != nullptr && HitActor != SelectedFurniture && !bCameraControlActive) HitActor->OnHovered();
-				HoveredFurniture = HitActor;
-			}
-		}
-		else
+void ADesktopPawn::UpdateHover(APlayerController* PC)
+{
+	FHitResult HitResult;
+	if (PC->GetHitResultUnderCursor(ECC_Visibility, false, HitResult ))
+	{
+		AFurnitureActor* HitActor = Cast<AFurnitureActor>(HitResult.GetActor());
+
+		if (HitActor != HoveredFurniture)
 		{
 			if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
-		}
-
-		if (LMBState == ELMBState::Dragging && bDragActive)
-		{
-			const FVector2D VirtualMousePos = MouseInitPosition + FVector2D(AccumulatedDragDelta.X, -AccumulatedDragDelta.Y);
-			FVector WorldLocation;
-			FVector WorldDirection;
-			PC->DeprojectScreenPositionToWorld(VirtualMousePos.X, VirtualMousePos.Y, WorldLocation, WorldDirection);
-			const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
-			SelectedFurniture->SetActorLocation(WorldLocation + t * WorldDirection + DragOffset);
+			if (HitActor != nullptr && HitActor != SelectedFurniture && !bCameraControlActive)
+			{
+				PC->CurrentMouseCursor = EMouseCursor::Hand;
+				HitActor->OnHovered();
+			} 
+			else
+			{
+				PC->CurrentMouseCursor = EMouseCursor::Default;
+			}
+			HoveredFurniture = HitActor;
 		}
 	}
+	else
+	{
+		if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
+	}
+}
+
+void ADesktopPawn::UpdateDrag(APlayerController* PC)
+{
+	if (LMBState == ELMBState::Dragging)
+	{
+		//const FVector2D VirtualMousePos = MouseInitPosition + FVector2D(AccumulatedDragDelta.X, -AccumulatedDragDelta.Y);
+		float MouseX;
+		float MouseY;
+		PC->GetMousePosition(MouseX, MouseY);
+		FVector WorldLocation;
+		FVector WorldDirection;
+		PC->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
+		const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
+		PhysicsHandle->SetTargetLocation(WorldLocation + t * WorldDirection);
+	}
+}
+
+void ADesktopPawn::UpdateCursor(APlayerController* PC)
+{
+	if (LMBState == ELMBState::Dragging)
+		PC->CurrentMouseCursor = EMouseCursor::GrabHandClosed;
+	else if (HoveredFurniture != nullptr)
+		PC->CurrentMouseCursor = EMouseCursor::Hand;
+	else
+		PC->CurrentMouseCursor = EMouseCursor::Default;
 }
 
 void ADesktopPawn::BeginPlay()
@@ -87,8 +119,9 @@ void ADesktopPawn::BeginPlay()
 	{
 		PC->bShowMouseCursor = true; // show cursor
 		FInputModeGameAndUI InputMode;
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockOnCapture); // unlock cursor windows limit
-		PC->SetInputMode(InputMode); 
+		//InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockOnCapture); // unlock cursor windows limit
+		InputMode.SetHideCursorDuringCapture(false);
+		PC->SetInputMode(InputMode);
 	}
 }
 
@@ -178,17 +211,16 @@ void ADesktopPawn::Zooming(const FInputActionValue& Value)
 }
 
 /*
- * Left click checks if cursor hits something, 
- * if true catchs mouse moves and save mouse initial position,
- * set OritPivot at click location,
- * set LMBState to Pressed (if on mac Alt is pressed LMBState stay Idle)
- * set DesktopPawn pointer SelectedFurniture with actor hit by cursor
+ * Left Click Mouse Button functions:
+ * - LeftClicking: first click and choose which LMBState set (Event STARTED)
+ * - LeftClickingHeld: manage which function trigger based oin LMBState (Event TRIGGERED)
+ * - LeftClickingReleased set back LMBState to Idle and reset variables (Event COMPLETED)
  */
 void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 {
 	if (!Controller) return;
 	FHitResult HitResult;
-	const APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	APlayerController* PlayerController = Cast<APlayerController>(Controller);
 	if (PlayerController->GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
 	{
 		float MouseX;
@@ -207,20 +239,15 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 				LMBState = ELMBState::Dragging;
 				DragPlaneZ = SelectedFurniture->GetActorLocation().Z;
 				AccumulatedDragDelta = FVector2D::ZeroVector;
-				bDragActive = false;
-				UE_LOG(LogTemp, Warning, TEXT("LeftClicking FIRED - LMBState was: %d"), (int)LMBState);
 				
 				FVector WorldLocation;
 				FVector WorldDirection;
 				PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
 				float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
+				const FVector GrabLocation = WorldLocation + t * WorldDirection;
 				
-				UE_LOG(LogTemp, Warning, TEXT("Drag | MousePos: X=%.1f Y=%.1f | Target: %s | Current: %s"),
-					  MouseX, MouseY,
-					  *(WorldLocation + t * WorldDirection + DragOffset).ToString(),
-					  *SelectedFurniture->GetActorLocation().ToString());
-				
-				DragOffset = SelectedFurniture->GetActorLocation() - (WorldLocation + t * WorldDirection);
+				//DragOffset = SelectedFurniture->GetActorLocation() - (WorldLocation + t * WorldDirection);
+				PhysicsHandle->GrabComponentAtLocation(SelectedFurniture->GetFurnitureMesh(), NAME_None, GrabLocation);
 			}
 			else
 			{
@@ -233,90 +260,72 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 	}
 }
 
-/*
- * based on LMBState always enter on PRESSED,
- * catchs mouse moves and verify if the movement is > then OrbitDragThreshold,
- * if so set the distance between player and OrbitPivot, then set a OrbitVirtualPivot,
- * enable flag bool to AlignOrbit,
- * set LMBState to enter Orbit mode
- * 
- * in ORBITING state catchs mouse moves,
- * if OrbitAligning is true set orbit OrbitAlignAlpha value, if >=1 set OrbitALigning back to false,
- * define and init CurrentPivot then define NextRotation to apply clamped between -89/89,
- * set orbit rotation and player location
- */
 void ADesktopPawn::LeftClickingHeld()
 {
 	APlayerController* PlayerController = Cast<APlayerController>(Controller);
-	if (PlayerController)
+	if (!PlayerController) return ;
+	
+	switch (LMBState)
 	{
-		switch (LMBState) // switch based on LMB State 
-		{
-			case ELMBState::Pressed:
-				{
-					float DeltaX;
-					float DeltaY;
-					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
-					AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
-
-					if (AccumulatedDragDelta.Size() > OrbitDragThreshold)
-					{
-						const FVector InitForward = FRotationMatrix(Controller->GetControlRotation()).GetUnitAxis(EAxis::X);
-						OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
-						OrbitVirtualPivot = GetActorLocation() + InitForward * OrbitArmLength;
-						bOrbitAligning = true;
-						OrbitAlignAlpha = 0.f;
-						LMBState = ELMBState::Orbiting;
-					}
-					break;
-				}
-				
-			case ELMBState::Orbiting:
-				{
-					if (!Controller) return;
-					
-					const FRotator CurrentRotation = Controller->GetControlRotation();
-					
-					float DeltaX;
-					float DeltaY;
-					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
-
-					if (bOrbitAligning)
-					{
-						OrbitAlignAlpha = FMath::Min(OrbitAlignAlpha + GetWorld()->GetDeltaSeconds() * 4.f, 1.f); //4.f set blending velocity
-						if (OrbitAlignAlpha >= 1.f) bOrbitAligning = false;
-					}
-					
-					const FVector CurrentPivot = bOrbitAligning ? FMath::Lerp(OrbitVirtualPivot, OrbitPivot, FMath::InterpEaseOut(0.f, 1.f, OrbitAlignAlpha, 3.f)) : OrbitPivot;
-					
-					const FRotator NextRotation(
-						  FMath::Clamp(CurrentRotation.Pitch + DeltaY * OrbitSensitivity, -89.f, 89.f),
-						  CurrentRotation.Yaw + DeltaX * OrbitSensitivity,
-						  0.f
-					  );
-					
-					Controller->SetControlRotation(NextRotation);
-					SetActorLocation(CurrentPivot - FRotationMatrix(NextRotation).GetUnitAxis(EAxis::X) * OrbitArmLength);
-					
-					break;
-				}
-			
-			case ELMBState::Dragging:
-				{
-					float DeltaX;
-					float DeltaY;
-					PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
-					AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
-
-					if (!bDragActive && AccumulatedDragDelta.Size() > OrbitDragThreshold)
-						bDragActive = true;
-
-					break;
-				}
-			default:
-				break;
-		}
+		case ELMBState::Pressed: HandlePressed(PlayerController); break;
+		case ELMBState::Orbiting: HandleOrbiting(PlayerController); break;
+		case ELMBState::Dragging: HandleDragging(PlayerController); break;
+		default: break;
 	}
+}
+
+void ADesktopPawn::HandlePressed( APlayerController* PlayerController)
+{
+	float DeltaX;
+	float DeltaY;
+	PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
+	AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
+
+	if (AccumulatedDragDelta.Size() > OrbitDragThreshold)
+	{
+		const FVector InitForward = FRotationMatrix(Controller->GetControlRotation()).GetUnitAxis(EAxis::X);
+		OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
+		OrbitVirtualPivot = GetActorLocation() + InitForward * OrbitArmLength;
+		bOrbitAligning = true;
+		OrbitAlignAlpha = 0.f;
+		LMBState = ELMBState::Orbiting;
+	}
+}
+
+void ADesktopPawn::HandleOrbiting( APlayerController* PlayerController)
+{
+	if (!Controller) return;
+					
+	const FRotator CurrentRotation = Controller->GetControlRotation();
+					
+	float DeltaX;
+	float DeltaY;
+	PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
+
+	if (bOrbitAligning)
+	{
+		OrbitAlignAlpha = FMath::Min(OrbitAlignAlpha + GetWorld()->GetDeltaSeconds() * 4.f, 1.f); //4.f set blending velocity
+		if (OrbitAlignAlpha >= 1.f) bOrbitAligning = false;
+	}
+					
+	const FVector CurrentPivot = bOrbitAligning ? FMath::Lerp(OrbitVirtualPivot, OrbitPivot, FMath::InterpEaseOut(0.f, 1.f, OrbitAlignAlpha, 3.f)) : OrbitPivot;
+					
+	const FRotator NextRotation(
+		FMath::Clamp(CurrentRotation.Pitch + DeltaY * OrbitSensitivity, -89.f, 89.f),
+		CurrentRotation.Yaw + DeltaX * OrbitSensitivity,
+		0.f
+	);
+					
+	Controller->SetControlRotation(NextRotation);
+	SetActorLocation(CurrentPivot - FRotationMatrix(NextRotation).GetUnitAxis(EAxis::X) * OrbitArmLength);
+}
+
+void ADesktopPawn::HandleDragging( APlayerController* PlayerController)
+{
+	float DeltaX;
+	float DeltaY;
+	PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
+	AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
 }
 
 void ADesktopPawn::LeftClickingReleased()
@@ -327,19 +336,31 @@ void ADesktopPawn::LeftClickingReleased()
 		SelectedFurniture = ClickedFurniture;
 		if (SelectedFurniture) SelectedFurniture->OnSelected();
 	}
+	if (LMBState == ELMBState::Dragging)
+	{
+		PhysicsHandle->ReleaseComponent();
+	}
 	bOrbitAligning = false;
-	bDragActive = false;
 	LMBState = ELMBState::Idle;
-	UE_LOG(LogTemp, Warning, TEXT("LeftClickingReleased - LMBState: %d"), (int)LMBState);
 }
+
+
 
 void ADesktopPawn::OnCameraControlStarted()
 {
-	bCameraControlActive = true;
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		PlayerController->bShowMouseCursor = false;
+		bCameraControlActive = true;
+	}
 }
 
 void ADesktopPawn::OnCameraControlStopped()
 {
-	bCameraControlActive = false;
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		PlayerController->bShowMouseCursor = true;
+		bCameraControlActive = false;
+	}	
 }
 

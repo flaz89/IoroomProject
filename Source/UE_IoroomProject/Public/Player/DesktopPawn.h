@@ -7,6 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "DesktopPawn.generated.h"
 
+class UPhysicsHandleComponent;
 class AFurnitureActor;
 class USpringArmComponent;
 class UFloatingPawnMovement;
@@ -29,7 +30,7 @@ class UE_IOROOMPROJECT_API ADesktopPawn : public APawn
 
 public:
 	ADesktopPawn();
-	void Tick(float DeltaTime) override;
+	virtual void Tick(float DeltaTime) override;
 	
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -49,6 +50,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UFloatingPawnMovement> FloatingPawnMovement;
+	
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UPhysicsHandleComponent> PhysicsHandle;
 	
 	// Input Actions
 	
@@ -85,10 +89,18 @@ private:
 	void Panning(const FInputActionValue& Value);
 	void Zooming(const FInputActionValue& Value);
 	void LeftClicking(const FInputActionValue& Value);
+	void HandlePressed(APlayerController* PlayerController);
+	void HandleOrbiting(APlayerController* PlayerController);
+	void HandleDragging(APlayerController* PlayerController);
 	void LeftClickingHeld();
 	void LeftClickingReleased();
 	void OnCameraControlStarted();
 	void OnCameraControlStopped();
+	
+	// updates
+	void UpdateHover(APlayerController* PC);
+	void UpdateDrag(APlayerController* PC);
+	void UpdateCursor(APlayerController* PC);
 	
 	// orbit properties
 	FVector OrbitPivot;
@@ -103,7 +115,6 @@ private:
 	// drag properties
 	float DragPlaneZ;
 	FVector DragOffset;
-	bool bDragActive = false;
 	
 	// Furniture actors
 	TObjectPtr<AFurnitureActor> HoveredFurniture;

@@ -10,6 +10,8 @@ AFurnitureActor::AFurnitureActor()
 	PrimaryActorTick.bCanEverTick = false;
 	SetReplicates(true);
 	SetReplicatingMovement(true);
+	SetNetUpdateFrequency(50.f);
+	SetMinNetUpdateFrequency(20.f);
 	
 	FurnitureMesh = CreateDefaultSubobject<UStaticMeshComponent>("FurnitureMesh");
 	FurnitureMesh->SetMobility(EComponentMobility::Movable);
@@ -24,6 +26,7 @@ void AFurnitureActor::BeginPlay()
 
 void AFurnitureActor::OnHovered()
 {
+	UE_LOG(LogTemp, Log, TEXT("HOVERED"));
 	FurnitureMesh->SetOverlayMaterial(MouseHoverMaterial);
 }
 
@@ -34,15 +37,17 @@ void AFurnitureActor::OnUnHovered()
 
 void AFurnitureActor::OnSelected()
 {
+	bIsSelected = true;
 	FurnitureMesh->SetRenderCustomDepth(true);
 	FurnitureMesh->SetCustomDepthStencilValue(1);
-	bIsSelected = true;
+	FurnitureMesh->SetSimulatePhysics(true);
 }
 
 void AFurnitureActor::OnDeselected()
 {
-	FurnitureMesh->SetRenderCustomDepth(false);
 	bIsSelected = false;
+	FurnitureMesh->SetRenderCustomDepth(false);
+	FurnitureMesh->SetSimulatePhysics(false);
 }
 
 
