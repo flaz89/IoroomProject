@@ -14,8 +14,6 @@ class UE_IOROOMPROJECT_API AFurnitureActor : public AActor
 public:
 	AFurnitureActor();
 	
-	UStaticMeshComponent* GetFurnitureMesh() const { return FurnitureMesh; }
-	
 	void OnHovered();
 	void OnUnHovered();
 	void OnSelected();

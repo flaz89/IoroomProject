@@ -7,7 +7,6 @@
 #include "GameFramework/Pawn.h"
 #include "DesktopPawn.generated.h"
 
-class UPhysicsHandleComponent;
 class AFurnitureActor;
 class USpringArmComponent;
 class UFloatingPawnMovement;
@@ -51,9 +50,6 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UFloatingPawnMovement> FloatingPawnMovement;
 	
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UPhysicsHandleComponent> PhysicsHandle;
-	
 	// Input Actions
 	
 	UPROPERTY(EditDefaultsOnly, Category="Actions")
@@ -91,11 +87,12 @@ private:
 	void LeftClicking(const FInputActionValue& Value);
 	void HandlePressed(APlayerController* PlayerController);
 	void HandleOrbiting(APlayerController* PlayerController);
-	void HandleDragging(APlayerController* PlayerController);
 	void LeftClickingHeld();
 	void LeftClickingReleased();
 	void OnCameraControlStarted();
 	void OnCameraControlStopped();
+	void OnPanStarted();
+	void OnPanStopped();
 	
 	// updates
 	void UpdateHover(APlayerController* PC);
@@ -115,6 +112,9 @@ private:
 	// drag properties
 	float DragPlaneZ;
 	FVector DragOffset;
+	
+	//pan properties
+	bool bIsPanning = false;
 	
 	// Furniture actors
 	TObjectPtr<AFurnitureActor> HoveredFurniture;

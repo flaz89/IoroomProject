@@ -40,14 +40,12 @@ void AFurnitureActor::OnSelected()
 	bIsSelected = true;
 	FurnitureMesh->SetRenderCustomDepth(true);
 	FurnitureMesh->SetCustomDepthStencilValue(1);
-	FurnitureMesh->SetSimulatePhysics(true);
 }
 
 void AFurnitureActor::OnDeselected()
 {
 	bIsSelected = false;
 	FurnitureMesh->SetRenderCustomDepth(false);
-	FurnitureMesh->SetSimulatePhysics(false);
 }
 
 

@@ -8,8 +8,6 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "PhysicsEngine/PhysicsHandleComponent.h"
-
 /*
  * CONSTRUCTOR
  * - set root component
@@ -36,8 +34,7 @@ ADesktopPawn::ADesktopPawn()
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	
 	FloatingPawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
-	PhysicsHandle = CreateDefaultSubobject<UPhysicsHandleComponent>("PhysicsHandle");
-	
+
 	// if mac value 5.f, if windows 20.f
 	ZoomSpeed = 5.f;
 	#if PLATFORM_WINDOWS
@@ -69,19 +66,20 @@ void ADesktopPawn::UpdateHover(APlayerController* PC)
 			if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
 			if (HitActor != nullptr && HitActor != SelectedFurniture && !bCameraControlActive)
 			{
-				PC->CurrentMouseCursor = EMouseCursor::Hand;
 				HitActor->OnHovered();
 			} 
-			else
-			{
-				PC->CurrentMouseCursor = EMouseCursor::Default;
-			}
+
 			HoveredFurniture = HitActor;
 		}
 	}
 	else
 	{
-		if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
+		if (HoveredFurniture != nullptr)
+		{
+			HoveredFurniture->OnUnHovered();
+		}  
+		
+		HoveredFurniture = nullptr;
 	}
 }
 
@@ -89,7 +87,6 @@ void ADesktopPawn::UpdateDrag(APlayerController* PC)
 {
 	if (LMBState == ELMBState::Dragging)
 	{
-		//const FVector2D VirtualMousePos = MouseInitPosition + FVector2D(AccumulatedDragDelta.X, -AccumulatedDragDelta.Y);
 		float MouseX;
 		float MouseY;
 		PC->GetMousePosition(MouseX, MouseY);
@@ -97,18 +94,25 @@ void ADesktopPawn::UpdateDrag(APlayerController* PC)
 		FVector WorldDirection;
 		PC->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
 		const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
-		PhysicsHandle->SetTargetLocation(WorldLocation + t * WorldDirection);
+
+		SelectedFurniture->SetActorLocation((WorldLocation + t * WorldDirection) + DragOffset, false, nullptr, ETeleportType::TeleportPhysics);
 	}
 }
 
 void ADesktopPawn::UpdateCursor(APlayerController* PC)
 {
-	if (LMBState == ELMBState::Dragging)
+	if (LMBState == ELMBState::Dragging || bIsPanning)
+	{
 		PC->CurrentMouseCursor = EMouseCursor::GrabHandClosed;
+	}
 	else if (HoveredFurniture != nullptr)
+	{
 		PC->CurrentMouseCursor = EMouseCursor::Hand;
+	}
 	else
+	{
 		PC->CurrentMouseCursor = EMouseCursor::Default;
+	}
 }
 
 void ADesktopPawn::BeginPlay()
@@ -142,8 +146,8 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		
 		// MMB (Mac = left alt + LMB)
 		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Triggered, this, &ADesktopPawn::Panning);
-		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Started, this, &ADesktopPawn::OnCameraControlStarted);
-		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Completed, this, &ADesktopPawn::OnCameraControlStopped);
+		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Started, this, &ADesktopPawn::OnPanStarted);
+		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Completed, this, &ADesktopPawn::OnPanStopped);
 		
 		// LMB
 		EnhancedInputComponent->BindAction(LeftClick,ETriggerEvent::Started, this, &ADesktopPawn::LeftClicking);
@@ -173,7 +177,6 @@ void ADesktopPawn::Movement(const FInputActionValue& Value)
 void ADesktopPawn::LookAround(const FInputActionValue& Value)
 {
 	if (!Controller) return;
-	bCameraControlActive = true;
 	const FVector2D AxisValue = Value.Get<FVector2D>();
 
 	AddControllerYawInput(AxisValue.X);
@@ -183,7 +186,6 @@ void ADesktopPawn::LookAround(const FInputActionValue& Value)
 void ADesktopPawn::Panning(const FInputActionValue& Value)
 {
 	if (!Controller) return;
-	bCameraControlActive = true;
 	const FVector2D AxisValue = Value.Get<FVector2D>();
 	
 	const FRotator ControllerRotation = Controller->GetControlRotation();
@@ -246,8 +248,7 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 				float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
 				const FVector GrabLocation = WorldLocation + t * WorldDirection;
 				
-				//DragOffset = SelectedFurniture->GetActorLocation() - (WorldLocation + t * WorldDirection);
-				PhysicsHandle->GrabComponentAtLocation(SelectedFurniture->GetFurnitureMesh(), NAME_None, GrabLocation);
+				DragOffset = SelectedFurniture->GetActorLocation() - GrabLocation;
 			}
 			else
 			{
@@ -269,7 +270,6 @@ void ADesktopPawn::LeftClickingHeld()
 	{
 		case ELMBState::Pressed: HandlePressed(PlayerController); break;
 		case ELMBState::Orbiting: HandleOrbiting(PlayerController); break;
-		case ELMBState::Dragging: HandleDragging(PlayerController); break;
 		default: break;
 	}
 }
@@ -320,27 +320,21 @@ void ADesktopPawn::HandleOrbiting( APlayerController* PlayerController)
 	SetActorLocation(CurrentPivot - FRotationMatrix(NextRotation).GetUnitAxis(EAxis::X) * OrbitArmLength);
 }
 
-void ADesktopPawn::HandleDragging( APlayerController* PlayerController)
-{
-	float DeltaX;
-	float DeltaY;
-	PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
-	AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
-}
-
 void ADesktopPawn::LeftClickingReleased()
 {
+	// because macOS uses LFB+alt for panning
+	#if PLATFORM_MAC
+		bIsPanning = false;
+	#endif	
+	
 	if (LMBState == ELMBState::Pressed)
 	{
 		if (SelectedFurniture) SelectedFurniture->OnDeselected();
 		SelectedFurniture = ClickedFurniture;
 		if (SelectedFurniture) SelectedFurniture->OnSelected();
 	}
-	if (LMBState == ELMBState::Dragging)
-	{
-		PhysicsHandle->ReleaseComponent();
-	}
 	bOrbitAligning = false;
+	
 	LMBState = ELMBState::Idle;
 }
 
@@ -362,5 +356,21 @@ void ADesktopPawn::OnCameraControlStopped()
 		PlayerController->bShowMouseCursor = true;
 		bCameraControlActive = false;
 	}	
+}
+
+void ADesktopPawn::OnPanStarted()
+{
+	bIsPanning = true;
+	bCameraControlActive = true;
+}
+
+void ADesktopPawn::OnPanStopped()
+{
+	bIsPanning = false;
+	bCameraControlActive = false;
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		PlayerController->bShowMouseCursor = true;
+	}
 }
 
