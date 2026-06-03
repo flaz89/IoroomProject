@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Player/DesktopPawn.h"
 
 #include "EnhancedInputComponent.h"
@@ -8,128 +7,88 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
-/*
- * CONSTRUCTOR
- * - set root component
- * - set sprigarm and its bheaviour
- * - set camera
- * - set floating pawn movement component
- * - chooses ZoomSpeed value based on OS
- */
+
 ADesktopPawn::ADesktopPawn()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+
 	SceneRoot = CreateDefaultSubobject<USceneComponent>("RootComponent");
 	RootComponent = SceneRoot;
-	
+
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("SpringArm");
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->TargetArmLength = 0.f;
 	SpringArm->bUsePawnControlRotation = true;
-	SpringArm->bEnableCameraRotationLag = true;
-	SpringArm->CameraRotationLagSpeed = 5.f;
-	
+	//SpringArm->bEnableCameraRotationLag = false;
+	//SpringArm->CameraRotationLagSpeed = 5.f;
+
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	
+	Body = CreateDefaultSubobject<UStaticMeshComponent>("Body");
+	Body->SetupAttachment(RootComponent);
+
 	FloatingPawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
 
-	// if mac value 5.f, if windows 20.f
 	ZoomSpeed = 5.f;
 	#if PLATFORM_WINDOWS
 		ZoomSpeed = 20.f;
 	#endif
 }
 
-void ADesktopPawn::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
-	{
-		UpdateHover(PlayerController);
-		UpdateDrag(PlayerController);
-		UpdateCursor(PlayerController);
-	}
-}
-
-void ADesktopPawn::UpdateHover(APlayerController* PC)
-{
-	FHitResult HitResult;
-	if (PC->GetHitResultUnderCursor(ECC_Visibility, false, HitResult ))
-	{
-		AFurnitureActor* HitActor = Cast<AFurnitureActor>(HitResult.GetActor());
-
-		if (HitActor != HoveredFurniture)
-		{
-			if (HoveredFurniture != nullptr) HoveredFurniture->OnUnHovered();
-			if (HitActor != nullptr && HitActor != SelectedFurniture && !bCameraControlActive)
-			{
-				HitActor->OnHovered();
-			} 
-
-			HoveredFurniture = HitActor;
-		}
-	}
-	else
-	{
-		if (HoveredFurniture != nullptr)
-		{
-			HoveredFurniture->OnUnHovered();
-		}  
-		
-		HoveredFurniture = nullptr;
-	}
-}
-
-void ADesktopPawn::UpdateDrag(APlayerController* PC)
-{
-	if (LMBState == ELMBState::Dragging)
-	{
-		float MouseX;
-		float MouseY;
-		PC->GetMousePosition(MouseX, MouseY);
-		FVector WorldLocation;
-		FVector WorldDirection;
-		PC->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
-		const float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
-
-		SelectedFurniture->SetActorLocation((WorldLocation + t * WorldDirection) + DragOffset, false, nullptr, ETeleportType::TeleportPhysics);
-	}
-}
-
-void ADesktopPawn::UpdateCursor(APlayerController* PC)
-{
-	if (LMBState == ELMBState::Dragging || bIsPanning)
-	{
-		PC->CurrentMouseCursor = EMouseCursor::GrabHandClosed;
-	}
-	else if (HoveredFurniture != nullptr)
-	{
-		PC->CurrentMouseCursor = EMouseCursor::Hand;
-	}
-	else
-	{
-		PC->CurrentMouseCursor = EMouseCursor::Default;
-	}
-}
-
 void ADesktopPawn::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		PC->bShowMouseCursor = true; // show cursor
+		PC->bShowMouseCursor = true;
 		FInputModeGameAndUI InputMode;
-		//InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockOnCapture); // unlock cursor windows limit
 		InputMode.SetHideCursorDuringCapture(false);
 		PC->SetInputMode(InputMode);
 	}
 }
 
-// functions Input and bound to Input Actions
+void ADesktopPawn::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		UpdateHover(PlayerController);
+	}
+	
+}
+
+void ADesktopPawn::UpdateHover(const APlayerController* PlayerController)
+{
+	FHitResult Hit;
+	PlayerController->GetHitResultUnderCursor(ECC_Visibility, false, Hit);
+	
+	// no hovering starts if panning or looking around 
+	if (bCameraControlActive || LeftClickState == ELMBSate::Dragging || LeftClickState == ELMBSate::Orbiting) 
+	{
+		if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
+		HoveredFurniture = nullptr;
+		return;
+	}
+
+	if (AFurnitureActor* HitActor = Cast<AFurnitureActor>(Hit.GetActor()))
+	{
+		if (HitActor != HoveredFurniture && HitActor != SelectedFurniture)
+		{
+			if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
+			HitActor -> OnHovered();
+			HoveredFurniture = HitActor;
+		}
+	}
+	else
+	{
+		if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
+		HoveredFurniture = nullptr;
+	}
+}
+
 void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -138,19 +97,19 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	{
 		EnhancedInputComponent->BindAction(Move, ETriggerEvent::Triggered, this, &ADesktopPawn::Movement);
 		EnhancedInputComponent->BindAction(Zoom, ETriggerEvent::Triggered, this, &ADesktopPawn::Zooming);
-		
+
 		// RMB
 		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, this, &ADesktopPawn::LookAround);
 		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Started, this, &ADesktopPawn::OnCameraControlStarted);
 		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Completed, this, &ADesktopPawn::OnCameraControlStopped);
-		
+
 		// MMB (Mac = left alt + LMB)
 		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Triggered, this, &ADesktopPawn::Panning);
 		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Started, this, &ADesktopPawn::OnPanStarted);
 		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Completed, this, &ADesktopPawn::OnPanStopped);
-		
+
 		// LMB
-		EnhancedInputComponent->BindAction(LeftClick,ETriggerEvent::Started, this, &ADesktopPawn::LeftClicking);
+		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Started, this, &ADesktopPawn::LeftClicking);
 		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Triggered, this, &ADesktopPawn::LeftClickingHeld);
 		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Completed, this, &ADesktopPawn::LeftClickingReleased);
 	}
@@ -164,12 +123,11 @@ void ADesktopPawn::Movement(const FInputActionValue& Value)
 {
 	if (!Controller) return;
 	const FVector2D AxisValue = Value.Get<FVector2D>();
-	const FRotator ControllerRotaton = Controller->GetControlRotation();
-	
-	// transform radiant value to vector value wit 4x4 matrix
-	const FVector ForwardDirection = FRotationMatrix(ControllerRotaton).GetUnitAxis(EAxis::X);
-	const FVector RightDirection = FRotationMatrix(ControllerRotaton).GetUnitAxis(EAxis::Y);
-	
+	const FRotator ControllerRotation = Controller->GetControlRotation();
+
+	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
+	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
+
 	AddMovementInput(ForwardDirection, AxisValue.Y);
 	AddMovementInput(RightDirection, AxisValue.X);
 }
@@ -183,185 +141,40 @@ void ADesktopPawn::LookAround(const FInputActionValue& Value)
 	AddControllerPitchInput(AxisValue.Y);
 }
 
-void ADesktopPawn::Panning(const FInputActionValue& Value)
-{
-	if (!Controller) return;
-	const FVector2D AxisValue = Value.Get<FVector2D>();
-	
-	const FRotator ControllerRotation = Controller->GetControlRotation();
-	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
-	const FVector UpDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Z);
-	
-	AddMovementInput(RightDirection, AxisValue.X);
-	AddMovementInput(UpDirection, AxisValue.Y);
-}
-
 void ADesktopPawn::Zooming(const FInputActionValue& Value)
 {
 	if (!Controller) return;
 	float ZoomFactor = Value.Get<float>();
 	const FRotator ControllerRotation = Controller->GetControlRotation();
-	
+
 	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
-	
-	// negate windows value for scroll speed for correct movement
-	#if PLATFORM_WINDOWS
+
+#if PLATFORM_WINDOWS
 	ZoomFactor = -ZoomFactor;
-	#endif
-	
+#endif
+
 	AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);
 }
 
-/*
- * Left Click Mouse Button functions:
- * - LeftClicking: first click and choose which LMBState set (Event STARTED)
- * - LeftClickingHeld: manage which function trigger based oin LMBState (Event TRIGGERED)
- * - LeftClickingReleased set back LMBState to Idle and reset variables (Event COMPLETED)
- */
-void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
+void ADesktopPawn::Panning(const FInputActionValue& Value)
 {
 	if (!Controller) return;
-	FHitResult HitResult;
-	APlayerController* PlayerController = Cast<APlayerController>(Controller);
-	if (PlayerController->GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
-	{
-		float MouseX;
-		float MouseY;
-		if (PlayerController->GetMousePosition(MouseX, MouseY))
-		{
-			OrbitPivot = HitResult.ImpactPoint; 
-			MouseInitPosition = FVector2D(MouseX, MouseY);
-					
-			#if PLATFORM_MAC
-					if (PlayerController->IsInputKeyDown(EKeys::LeftAlt)) return; // on mac if alt for panning is pressed do nothing
-			#endif
-			
-			if (SelectedFurniture && HitResult.GetActor() == SelectedFurniture)
-			{
-				LMBState = ELMBState::Dragging;
-				DragPlaneZ = SelectedFurniture->GetActorLocation().Z;
-				AccumulatedDragDelta = FVector2D::ZeroVector;
-				
-				FVector WorldLocation;
-				FVector WorldDirection;
-				PlayerController->DeprojectScreenPositionToWorld(MouseX, MouseY, WorldLocation, WorldDirection);
-				float t = (DragPlaneZ - WorldLocation.Z) / WorldDirection.Z;
-				const FVector GrabLocation = WorldLocation + t * WorldDirection;
-				
-				DragOffset = SelectedFurniture->GetActorLocation() - GrabLocation;
-			}
-			else
-			{
-				LMBState = ELMBState::Pressed;
-				AccumulatedDragDelta = FVector2D::ZeroVector;
-			}
-		}
-		ClickedFurniture = Cast<AFurnitureActor>(HitResult.GetActor());
-		DrawDebugSphere(GetWorld(), OrbitPivot, 16, 16, FColor::Red, false, 2.f);
-	}
-}
+	const FVector2D AxisValue = Value.Get<FVector2D>();
 
-void ADesktopPawn::LeftClickingHeld()
-{
-	APlayerController* PlayerController = Cast<APlayerController>(Controller);
-	if (!PlayerController) return ;
-	
-	switch (LMBState)
-	{
-		case ELMBState::Pressed: HandlePressed(PlayerController); break;
-		case ELMBState::Orbiting: HandleOrbiting(PlayerController); break;
-		default: break;
-	}
-}
+	const FRotator ControllerRotation = Controller->GetControlRotation();
+	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
+	const FVector UpDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Z);
 
-void ADesktopPawn::HandlePressed( APlayerController* PlayerController)
-{
-	float DeltaX;
-	float DeltaY;
-	PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
-	AccumulatedDragDelta += FVector2D(DeltaX, DeltaY);
-
-	if (AccumulatedDragDelta.Size() > OrbitDragThreshold)
-	{
-		const FVector InitForward = FRotationMatrix(Controller->GetControlRotation()).GetUnitAxis(EAxis::X);
-		OrbitArmLength = (GetActorLocation() - OrbitPivot).Size();
-		OrbitVirtualPivot = GetActorLocation() + InitForward * OrbitArmLength;
-		bOrbitAligning = true;
-		OrbitAlignAlpha = 0.f;
-		LMBState = ELMBState::Orbiting;
-	}
-}
-
-void ADesktopPawn::HandleOrbiting( APlayerController* PlayerController)
-{
-	if (!Controller) return;
-					
-	const FRotator CurrentRotation = Controller->GetControlRotation();
-					
-	float DeltaX;
-	float DeltaY;
-	PlayerController->GetInputMouseDelta(DeltaX, DeltaY);
-
-	if (bOrbitAligning)
-	{
-		OrbitAlignAlpha = FMath::Min(OrbitAlignAlpha + GetWorld()->GetDeltaSeconds() * 4.f, 1.f); //4.f set blending velocity
-		if (OrbitAlignAlpha >= 1.f) bOrbitAligning = false;
-	}
-					
-	const FVector CurrentPivot = bOrbitAligning ? FMath::Lerp(OrbitVirtualPivot, OrbitPivot, FMath::InterpEaseOut(0.f, 1.f, OrbitAlignAlpha, 3.f)) : OrbitPivot;
-					
-	const FRotator NextRotation(
-		FMath::Clamp(CurrentRotation.Pitch + DeltaY * OrbitSensitivity, -89.f, 89.f),
-		CurrentRotation.Yaw + DeltaX * OrbitSensitivity,
-		0.f
-	);
-					
-	Controller->SetControlRotation(NextRotation);
-	SetActorLocation(CurrentPivot - FRotationMatrix(NextRotation).GetUnitAxis(EAxis::X) * OrbitArmLength);
-}
-
-void ADesktopPawn::LeftClickingReleased()
-{
-	// because macOS uses LFB+alt for panning
-	#if PLATFORM_MAC
-		bIsPanning = false;
-	#endif	
-	
-	if (LMBState == ELMBState::Pressed)
-	{
-		if (SelectedFurniture) SelectedFurniture->OnDeselected();
-		SelectedFurniture = ClickedFurniture;
-		if (SelectedFurniture) SelectedFurniture->OnSelected();
-	}
-	bOrbitAligning = false;
-	
-	LMBState = ELMBState::Idle;
-}
-
-
-
-void ADesktopPawn::OnCameraControlStarted()
-{
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-	{
-		PlayerController->bShowMouseCursor = false;
-		bCameraControlActive = true;
-	}
-}
-
-void ADesktopPawn::OnCameraControlStopped()
-{
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-	{
-		PlayerController->bShowMouseCursor = true;
-		bCameraControlActive = false;
-	}	
+	AddMovementInput(RightDirection, AxisValue.X);
+	AddMovementInput(UpDirection, AxisValue.Y);
 }
 
 void ADesktopPawn::OnPanStarted()
 {
 	bIsPanning = true;
 	bCameraControlActive = true;
+	LeftClickState = ELMBSate::Idle;
+	PressedFurniture = nullptr;
 }
 
 void ADesktopPawn::OnPanStopped()
@@ -373,4 +186,140 @@ void ADesktopPawn::OnPanStopped()
 		PlayerController->bShowMouseCursor = true;
 	}
 }
+
+void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
+{
+	if (!Controller) return;
+	const APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	
+	if (PlayerController)
+	{
+		FHitResult Hit;
+		PlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, false, Hit);
+		PressedFurniture = Cast<AFurnitureActor>(Hit.GetActor());
+		
+		float MouseX;
+		float MouseY;
+		PlayerController->GetMousePosition(MouseX, MouseY);
+		MousePositionOnClick = FVector2D(MouseX, MouseY);
+		
+		OrbitPivot = Hit.ImpactPoint;
+		LeftClickState = ELMBSate::Pressed;
+		DrawDebugSphere(GetWorld(), OrbitPivot, 10.f, 10, FColor::Red, false, 1.5f);
+	}
+}
+
+
+/*
+ * This function is on Event::Trigger so each frame holding Left Mouse Button (LMB) pressed checks if PlayerController exists and 
+ * stores the current mouse position on screen, after it checks the state of LMB to chooses if execute Drag or Orbit.
+ */
+void ADesktopPawn::LeftClickingHeld()
+{
+	if (!Controller) return;
+	APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	
+	if (PlayerController)
+	{
+		float CurrentMouseX;
+		float CurrentMouseY;
+		PlayerController->GetMousePosition(CurrentMouseX, CurrentMouseY);
+		const FVector2D CurrentMousePosition = FVector2D(CurrentMouseX, CurrentMouseY);
+		
+		if (LeftClickState == ELMBSate::Pressed) // set in LeftClicking()
+		{
+			if ((CurrentMousePosition - MousePositionOnClick).Size() > OrbitDragThreshold) // if player is dragging
+			{
+				LastMousePosition = CurrentMousePosition;
+				OrbitRadius = FVector::Dist(GetActorLocation(), OrbitPivot);
+				
+				if (PressedFurniture && PressedFurniture == SelectedFurniture)
+				{
+					LeftClickState = ELMBSate::Dragging;
+				} 
+				else
+				{
+					bUseControllerRotationYaw = true;
+					bUseControllerRotationPitch = true;
+					LeftClickState = ELMBSate::Orbiting;
+				}
+			}
+		}
+		else if (LeftClickState == ELMBSate::Orbiting)
+		{
+			HandleOrbit(CurrentMousePosition);
+		}
+		else if (LeftClickState == ELMBSate::Dragging)
+		{
+			HandleDrag(CurrentMousePosition);
+		}
+	}
+}
+
+void ADesktopPawn::HandleDrag(FVector2D CurrentMousePosition)
+{
+	
+}
+
+void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
+{
+	FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
+	
+	FRotator Rotation = GetControlRotation();
+	Rotation.Yaw += MousePositionDelta.X * OrbitSensitivity;
+	Rotation.Pitch = FMath::Clamp(Rotation.Pitch - MousePositionDelta.Y * OrbitSensitivity, -89.f, 89.f);
+	GetController()->SetControlRotation(Rotation);
+
+	SetActorLocation(OrbitPivot - GetControlRotation().Vector() * OrbitRadius);
+	LastMousePosition = CurrentMousePosition;
+}
+
+void ADesktopPawn::LeftClickingReleased()
+{
+	
+	if (LeftClickState == ELMBSate::Pressed)
+	{
+		if (PressedFurniture)
+		{
+			if (SelectedFurniture) SelectedFurniture->OnDeselected();
+			PressedFurniture->OnSelected();
+			PressedFurniture->OnUnHovered();
+			SelectedFurniture = PressedFurniture;
+		}
+		else
+		{
+			if (SelectedFurniture) SelectedFurniture->OnDeselected();
+			SelectedFurniture = nullptr;
+		}
+	}
+	
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	PressedFurniture = nullptr;
+	LeftClickState = ELMBSate::Idle;
+}
+
+void ADesktopPawn::OnCameraControlStarted()
+{
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		PlayerController->bShowMouseCursor = false;
+		bUseControllerRotationYaw = true;
+		bUseControllerRotationPitch = true;
+		bCameraControlActive = true;
+	}
+}
+
+void ADesktopPawn::OnCameraControlStopped()
+{
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		PlayerController->bShowMouseCursor = true;
+		bUseControllerRotationYaw = false;
+		bUseControllerRotationPitch = false;
+		bCameraControlActive = false;
+	}
+}
+
+
 

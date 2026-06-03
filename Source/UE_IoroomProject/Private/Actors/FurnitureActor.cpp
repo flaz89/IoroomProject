@@ -26,7 +26,6 @@ void AFurnitureActor::BeginPlay()
 
 void AFurnitureActor::OnHovered()
 {
-	UE_LOG(LogTemp, Log, TEXT("HOVERED"));
 	FurnitureMesh->SetOverlayMaterial(MouseHoverMaterial);
 }
 
