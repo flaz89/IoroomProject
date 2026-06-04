@@ -56,6 +56,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category="Actions")
 	TObjectPtr<UInputAction> Look;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Actions")
+	TObjectPtr<UInputAction> LookActctivate;
 
 	UPROPERTY(EditDefaultsOnly, Category="Actions")
 	TObjectPtr<UInputAction> Pan;

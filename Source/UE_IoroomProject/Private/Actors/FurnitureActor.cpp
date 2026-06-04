@@ -8,7 +8,7 @@
 AFurnitureActor::AFurnitureActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	SetReplicates(true);
+	bReplicates = true;
 	SetReplicatingMovement(true);
 	SetNetUpdateFrequency(50.f);
 	SetMinNetUpdateFrequency(20.f);

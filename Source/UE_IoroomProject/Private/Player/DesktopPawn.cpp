@@ -11,6 +11,8 @@
 ADesktopPawn::ADesktopPawn()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
+	SetReplicatingMovement(true);
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>("RootComponent");
 	RootComponent = SceneRoot;
@@ -26,6 +28,7 @@ ADesktopPawn::ADesktopPawn()
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	
 	Body = CreateDefaultSubobject<UStaticMeshComponent>("Body");
+	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Body->SetupAttachment(RootComponent);
 
 	FloatingPawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
@@ -65,7 +68,7 @@ void ADesktopPawn::UpdateHover(const APlayerController* PlayerController)
 	FHitResult Hit;
 	PlayerController->GetHitResultUnderCursor(ECC_Visibility, false, Hit);
 	
-	// no hovering starts if panning or looking around 
+	// no hovering starts if panning, looking around / Orbiting / Dragging
 	if (bCameraControlActive || LeftClickState == ELMBSate::Dragging || LeftClickState == ELMBSate::Orbiting) 
 	{
 		if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
@@ -100,8 +103,8 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		// RMB
 		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, this, &ADesktopPawn::LookAround);
-		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Started, this, &ADesktopPawn::OnCameraControlStarted);
-		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Completed, this, &ADesktopPawn::OnCameraControlStopped);
+		EnhancedInputComponent->BindAction(LookActctivate, ETriggerEvent::Started, this, &ADesktopPawn::OnCameraControlStarted);
+		EnhancedInputComponent->BindAction(LookActctivate, ETriggerEvent::Completed, this, &ADesktopPawn::OnCameraControlStopped);
 
 		// MMB (Mac = left alt + LMB)
 		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Triggered, this, &ADesktopPawn::Panning);
@@ -304,6 +307,7 @@ void ADesktopPawn::OnCameraControlStarted()
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
 		PlayerController->bShowMouseCursor = false;
+		
 		bUseControllerRotationYaw = true;
 		bUseControllerRotationPitch = true;
 		bCameraControlActive = true;
@@ -315,6 +319,7 @@ void ADesktopPawn::OnCameraControlStopped()
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
 		PlayerController->bShowMouseCursor = true;
+	
 		bUseControllerRotationYaw = false;
 		bUseControllerRotationPitch = false;
 		bCameraControlActive = false;
