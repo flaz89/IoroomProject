@@ -242,6 +242,9 @@ void ADesktopPawn::LeftClickingHeld()
 				} 
 				else
 				{
+					OrbitEntryStartPivot = GetActorLocation() + GetControlRotation().Vector() * OrbitRadius;
+					OrbitEntryAlpha = 0.f;
+					
 					bUseControllerRotationYaw = true;
 					bUseControllerRotationPitch = true;
 					LeftClickState = ELMBSate::Orbiting;
@@ -268,23 +271,26 @@ void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 {
 	const FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
 	
-	FVector PivotToCamera = GetActorLocation() - OrbitPivot;
-	
-	// Yaw: rotation around OrbitPivot Z axe
+	OrbitEntryAlpha = FMath::Min(OrbitEntryAlpha + 1.f / 10.f, 1.f);
+	const FVector EffectivePivot = FMath::Lerp(OrbitEntryStartPivot, OrbitPivot, OrbitEntryAlpha);
+
+	FVector PivotToCamera = GetActorLocation() - EffectivePivot;
+
+	// Yaw: rotation around world Z axis
 	const FQuat YawQuat(FVector::UpVector, FMath::DegreesToRadians(MousePositionDelta.X * OrbitSensitivity));
 	PivotToCamera = YawQuat.RotateVector(PivotToCamera);
-	
+
 	// Pitch
 	const FVector Horizontal = FVector(PivotToCamera.X, PivotToCamera.Y, 0.f);
 	const float CurrentElevation = FMath::RadiansToDegrees(FMath::Atan2(PivotToCamera.Z, Horizontal.Size()));
 	const float NewElevation = FMath::Clamp(CurrentElevation + MousePositionDelta.Y * OrbitSensitivity, -89.f, 89.f);
-	
+
 	const float NewHorizontalDistance = FMath::Cos(FMath::DegreesToRadians(NewElevation)) * OrbitRadius;
-	const float NewVerdicalDistance = FMath::Sin(FMath::DegreesToRadians(NewElevation)) * OrbitRadius;
-	PivotToCamera = Horizontal.GetSafeNormal() * NewHorizontalDistance + FVector(0.f, 0.f, NewVerdicalDistance);
-	
-	SetActorLocation(OrbitPivot + PivotToCamera);
-	GetController()->SetControlRotation((OrbitPivot - GetActorLocation()).GetSafeNormal().Rotation());
+	const float NewVerticalDistance = FMath::Sin(FMath::DegreesToRadians(NewElevation)) * OrbitRadius;
+	PivotToCamera = Horizontal.GetSafeNormal() * NewHorizontalDistance + FVector(0.f, 0.f, NewVerticalDistance);
+
+	SetActorLocation(EffectivePivot + PivotToCamera);
+	GetController()->SetControlRotation((EffectivePivot - GetActorLocation()).GetSafeNormal().Rotation());
 	LastMousePosition = CurrentMousePosition;
 }
 

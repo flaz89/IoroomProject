@@ -116,5 +116,8 @@ private:
 	
 	FVector OrbitPivot;
 	float OrbitRadius;
+
+	FVector OrbitEntryStartPivot;
+	float OrbitEntryAlpha = 0.f;
 	
 };
