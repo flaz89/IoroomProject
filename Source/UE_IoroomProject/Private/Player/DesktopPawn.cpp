@@ -266,14 +266,25 @@ void ADesktopPawn::HandleDrag(FVector2D CurrentMousePosition)
 
 void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 {
-	FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
+	const FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
 	
-	FRotator Rotation = GetControlRotation();
-	Rotation.Yaw += MousePositionDelta.X * OrbitSensitivity;
-	Rotation.Pitch = FMath::Clamp(Rotation.Pitch - MousePositionDelta.Y * OrbitSensitivity, -89.f, 89.f);
-	GetController()->SetControlRotation(Rotation);
-
-	SetActorLocation(OrbitPivot - GetControlRotation().Vector() * OrbitRadius);
+	FVector PivotToCamera = GetActorLocation() - OrbitPivot;
+	
+	// Yaw: rotation around OrbitPivot Z axe
+	const FQuat YawQuat(FVector::UpVector, FMath::DegreesToRadians(MousePositionDelta.X * OrbitSensitivity));
+	PivotToCamera = YawQuat.RotateVector(PivotToCamera);
+	
+	// Pitch
+	const FVector Horizontal = FVector(PivotToCamera.X, PivotToCamera.Y, 0.f);
+	const float CurrentElevation = FMath::RadiansToDegrees(FMath::Atan2(PivotToCamera.Z, Horizontal.Size()));
+	const float NewElevation = FMath::Clamp(CurrentElevation + MousePositionDelta.Y * OrbitSensitivity, -89.f, 89.f);
+	
+	const float NewHorizontalDistance = FMath::Cos(FMath::DegreesToRadians(NewElevation)) * OrbitRadius;
+	const float NewVerdicalDistance = FMath::Sin(FMath::DegreesToRadians(NewElevation)) * OrbitRadius;
+	PivotToCamera = Horizontal.GetSafeNormal() * NewHorizontalDistance + FVector(0.f, 0.f, NewVerdicalDistance);
+	
+	SetActorLocation(OrbitPivot + PivotToCamera);
+	GetController()->SetControlRotation((OrbitPivot - GetActorLocation()).GetSafeNormal().Rotation());
 	LastMousePosition = CurrentMousePosition;
 }
 
