@@ -277,7 +277,7 @@ void ADesktopPawn::HandleDrag()
 {
 	if (SelectedFurniture == nullptr) return;
 	
-	if (const APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
 		FVector RayOrigin;
 		FVector RayDirection;
@@ -286,7 +286,33 @@ void ADesktopPawn::HandleDrag()
 
 		const float t = (DragPlaneZ - RayOrigin.Z) / RayDirection.Z;
 		const FVector WorldPoint = RayOrigin + t * RayDirection;
-		SelectedFurniture->SetActorLocation(FVector(WorldPoint.X + DragOffset.X, WorldPoint.Y + DragOffset.Y,  DragPlaneZ));
+		
+		// -- drag on object with trace on Z
+		float NewX = WorldPoint.X + DragOffset.X;
+		float NewY = WorldPoint.Y + DragOffset.Y;
+		
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(SelectedFurniture);
+		
+		FHitResult SurfaceHit;
+		GetWorld()->LineTraceSingleByChannel(
+			SurfaceHit, 
+			FVector(NewX, NewY, DragPlaneZ + 500.f),
+			FVector(NewX,NewY, -10000.f),
+			ECC_Visibility,
+			Params
+			);
+		
+		float NewZ = SurfaceHit.bBlockingHit ? SurfaceHit.ImpactPoint.Z : DragPlaneZ;
+		// --
+		
+		SelectedFurniture->SetActorLocation(FVector(NewX, NewY, NewZ));
+
+		const float NewT = (NewZ- RayOrigin.Z) / RayDirection.Z;
+		const FVector NewWorldPoint = RayOrigin + NewT * RayDirection;
+		DragOffset.X = NewX - NewWorldPoint.X;
+		DragOffset.Y = NewY - NewWorldPoint.Y;
+		DragPlaneZ = NewZ;
 	}
 	
 }
