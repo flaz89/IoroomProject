@@ -59,6 +59,7 @@ void ADesktopPawn::Tick(float DeltaTime)
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		UpdateHover(PlayerController);
+		UpdateCursor(PlayerController);
 	}
 	
 }
@@ -89,6 +90,30 @@ void ADesktopPawn::UpdateHover(const APlayerController* PlayerController)
 	{
 		if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
 		HoveredFurniture = nullptr;
+	}
+}
+
+void ADesktopPawn::UpdateCursor(APlayerController* PlayerController)
+{
+	if (bCameraControlActive)
+	{
+		PlayerController->bShowMouseCursor = false;
+		return;
+	} 
+	
+	PlayerController->bShowMouseCursor = true;
+	
+	if (LeftClickState == ELMBSate::Dragging || LeftClickState == ELMBSate::Orbiting)
+	{
+		PlayerController->CurrentMouseCursor = EMouseCursor::GrabHandClosed;
+	}
+	else if (HoveredFurniture != nullptr)
+	{
+		PlayerController->CurrentMouseCursor = EMouseCursor::Hand;
+	}
+	else
+	{
+		PlayerController->CurrentMouseCursor = EMouseCursor::Default;
 	}
 }
 
@@ -183,11 +208,6 @@ void ADesktopPawn::OnPanStarted()
 void ADesktopPawn::OnPanStopped()
 {
 	bIsPanning = false;
-	bCameraControlActive = false;
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-	{
-		PlayerController->bShowMouseCursor = true;
-	}
 }
 
 void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
@@ -373,8 +393,6 @@ void ADesktopPawn::OnCameraControlStarted()
 {
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
-		PlayerController->bShowMouseCursor = false;
-		
 		bUseControllerRotationYaw = true;
 		bUseControllerRotationPitch = true;
 		bCameraControlActive = true;
@@ -385,8 +403,6 @@ void ADesktopPawn::OnCameraControlStopped()
 {
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
-		PlayerController->bShowMouseCursor = true;
-	
 		bUseControllerRotationYaw = false;
 		bUseControllerRotationPitch = false;
 		bCameraControlActive = false;

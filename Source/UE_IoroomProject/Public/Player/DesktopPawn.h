@@ -105,6 +105,7 @@ private:
 	void OnCameraControlStopped();
 	
 	void UpdateHover(const APlayerController* PlayerController);
+	void UpdateCursor(APlayerController* PlayerController);
 	
 	bool bCameraControlActive = false;
 	bool bIsPanning = false;
