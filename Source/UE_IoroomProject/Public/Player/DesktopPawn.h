@@ -97,7 +97,7 @@ private:
 	
 	void LeftClicking(const FInputActionValue& Value);
 	void LeftClickingHeld();
-	void HandleDrag(FVector2D CurrentMousePosition);
+	void HandleDrag();
 	void HandleOrbit(FVector2D CurrentMousePosition);
 	void LeftClickingReleased();
 	
@@ -111,13 +111,19 @@ private:
 	
 	ELMBSate LeftClickState = ELMBSate::Idle;
 	
-	FVector2D MousePositionOnClick;
-	FVector2D LastMousePosition;
+	FVector2D MousePositionOnClick; // when LMB clicked
+	FVector2D LastMousePosition; // set each frame when LMB dragged
 	
+	// Orbit
 	FVector OrbitPivot;
 	float OrbitRadius;
-
 	FVector OrbitEntryStartPivot;
 	float OrbitEntryAlpha = 0.f;
+	
+	// Drag
+	FVector DragOffset;
+	float DragPlaneZ;
+	
+	
 	
 };

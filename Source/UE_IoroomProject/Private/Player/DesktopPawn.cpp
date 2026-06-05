@@ -234,14 +234,25 @@ void ADesktopPawn::LeftClickingHeld()
 			if ((CurrentMousePosition - MousePositionOnClick).Size() > OrbitDragThreshold) // if player is dragging
 			{
 				LastMousePosition = CurrentMousePosition;
-				OrbitRadius = FVector::Dist(GetActorLocation(), OrbitPivot);
 				
-				if (PressedFurniture && PressedFurniture == SelectedFurniture)
+				if (PressedFurniture && PressedFurniture == SelectedFurniture) // drag mode
 				{
+					FVector RayOrigin;
+					FVector RayDirection;
+					PlayerController->DeprojectMousePositionToWorld(RayOrigin, RayDirection);
+					
+					if (FMath::IsNearlyZero(RayDirection.Z)) return;
+					
+					DragPlaneZ = PressedFurniture->GetActorLocation().Z;
+					const float t = (DragPlaneZ - RayOrigin.Z) / RayDirection.Z;
+					const FVector WorldPoint = RayOrigin + t * RayDirection;
+					DragOffset = FVector(PressedFurniture->GetActorLocation().X - WorldPoint.X, PressedFurniture->GetActorLocation().Y - WorldPoint.Y, 0.0f);
+					
 					LeftClickState = ELMBSate::Dragging;
 				} 
-				else
+				else // orbit mode
 				{
+					OrbitRadius = FVector::Dist(GetActorLocation(), OrbitPivot);
 					OrbitEntryStartPivot = GetActorLocation() + GetControlRotation().Vector() * OrbitRadius;
 					OrbitEntryAlpha = 0.f;
 					
@@ -257,13 +268,26 @@ void ADesktopPawn::LeftClickingHeld()
 		}
 		else if (LeftClickState == ELMBSate::Dragging)
 		{
-			HandleDrag(CurrentMousePosition);
+			HandleDrag();
 		}
 	}
 }
 
-void ADesktopPawn::HandleDrag(FVector2D CurrentMousePosition)
+void ADesktopPawn::HandleDrag()
 {
+	if (SelectedFurniture == nullptr) return;
+	
+	if (const APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		FVector RayOrigin;
+		FVector RayDirection;
+		PlayerController->DeprojectMousePositionToWorld(RayOrigin, RayDirection);
+		if (FMath::IsNearlyZero(RayDirection.Z)) return;
+
+		const float t = (DragPlaneZ - RayOrigin.Z) / RayDirection.Z;
+		const FVector WorldPoint = RayOrigin + t * RayDirection;
+		SelectedFurniture->SetActorLocation(FVector(WorldPoint.X + DragOffset.X, WorldPoint.Y + DragOffset.Y,  DragPlaneZ));
+	}
 	
 }
 
@@ -271,7 +295,7 @@ void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 {
 	const FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
 	
-	OrbitEntryAlpha = FMath::Min(OrbitEntryAlpha + 1.f / 10.f, 1.f);
+	OrbitEntryAlpha = FMath::Min(OrbitEntryAlpha + 1.f / 10.f, 1.f); // 10.f amount of frame needed (+ slow, - fast)
 	const FVector EffectivePivot = FMath::Lerp(OrbitEntryStartPivot, OrbitPivot, OrbitEntryAlpha);
 
 	FVector PivotToCamera = GetActorLocation() - EffectivePivot;
