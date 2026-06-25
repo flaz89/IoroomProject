@@ -5,6 +5,7 @@
 #include "EnhancedInputComponent.h"
 #include "Actors/FurnitureActor.h"
 #include "Camera/CameraComponent.h"
+#include "Engine/World.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
 
@@ -13,6 +14,9 @@ ADesktopPawn::ADesktopPawn()
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 	SetReplicatingMovement(true);
+	
+	bUseControllerRotationYaw = true;
+	bUseControllerRotationPitch = true;
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>("RootComponent");
 	RootComponent = SceneRoot;
@@ -21,8 +25,6 @@ ADesktopPawn::ADesktopPawn()
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->TargetArmLength = 0.f;
 	SpringArm->bUsePawnControlRotation = true;
-	//SpringArm->bEnableCameraRotationLag = false;
-	//SpringArm->CameraRotationLagSpeed = 5.f;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
@@ -61,7 +63,6 @@ void ADesktopPawn::Tick(float DeltaTime)
 		UpdateHover(PlayerController);
 		UpdateCursor(PlayerController);
 	}
-	
 }
 
 void ADesktopPawn::UpdateHover(const APlayerController* PlayerController)
@@ -147,54 +148,109 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	}
 }
 
-void ADesktopPawn::Movement(const FInputActionValue& Value)
+void ADesktopPawn::Server_Move_Implementation(const FVector2D AxisValue)
 {
-	if (!Controller) return;
-	const FVector2D AxisValue = Value.Get<FVector2D>();
+	ApplyMovement(AxisValue);
+}
+
+
+void ADesktopPawn::ApplyMovement(const FVector2D AxisValue)
+{
+	if (!Controller) return;                                                                                                                                                                                                  
+	
 	const FRotator ControllerRotation = Controller->GetControlRotation();
 
 	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
 	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
+	const FVector NormalizedDirection = FVector(ForwardDirection * AxisValue.Y + RightDirection * AxisValue.X).GetClampedToMaxSize(1.f);
+	
+	const float DeltaTime = GetWorld()->GetDeltaSeconds();
+	AddActorWorldOffset(NormalizedDirection * MovementSpeed * DeltaTime, true);
+}
 
-	AddMovementInput(ForwardDirection, AxisValue.Y);
-	AddMovementInput(RightDirection, AxisValue.X);
+void ADesktopPawn::Movement(const FInputActionValue& Value)
+{
+	const FVector2D AxisValue = Value.Get<FVector2D>();
+	ApplyMovement(AxisValue);
+	Server_Move(AxisValue);
+}
+
+void ADesktopPawn::Server_Look_Implementation(FVector2D AxisValue)
+{
+	ApplyLook(AxisValue);
+}
+
+void ADesktopPawn::ApplyLook(const FVector2D AxisValue)
+{
+	if (!Controller) return;
+	
+	FRotator NewRotation = Controller->GetControlRotation();
+	NewRotation.Yaw += AxisValue.X;
+	NewRotation.Pitch = FMath::Clamp(NewRotation.Pitch - AxisValue.Y, -89.f, 89.f);
+
+	Controller->SetControlRotation(NewRotation);
+	FaceRotation(NewRotation, 0.f);
 }
 
 void ADesktopPawn::LookAround(const FInputActionValue& Value)
 {
-	if (!Controller) return;
 	const FVector2D AxisValue = Value.Get<FVector2D>();
-
-	AddControllerYawInput(AxisValue.X);
-	AddControllerPitchInput(AxisValue.Y);
+	ApplyLook(AxisValue);
+	Server_Look(AxisValue);
 }
 
-void ADesktopPawn::Zooming(const FInputActionValue& Value)
+void ADesktopPawn::Server_Zoom_Implementation(const float ZoomFactor)
+{
+	ApplyZoom(ZoomFactor);
+}
+
+void ADesktopPawn::ApplyZoom(const float ZoomFactor)
 {
 	if (!Controller) return;
-	float ZoomFactor = Value.Get<float>();
 	const FRotator ControllerRotation = Controller->GetControlRotation();
 
 	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
 
-#if PLATFORM_WINDOWS
-	ZoomFactor = -ZoomFactor;
-#endif
-
 	AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);
+}
+
+void ADesktopPawn::Zooming(const FInputActionValue& Value)
+{
+	float ZoomFactor = Value.Get<float>();
+	
+	#if PLATFORM_WINDOWS
+		ZoomFactor = -ZoomFactor;
+	#endif
+	
+	ApplyZoom(ZoomFactor);
+	Server_Zoom(ZoomFactor);
+}
+
+void ADesktopPawn::Server_Pan_Implementation(FVector2D AxisValue)
+{
+	ApplyPan(AxisValue);
+}
+
+void ADesktopPawn::ApplyPan(const FVector2D AxisValue)
+{
+	if (!Controller) return;
+	const FRotator ControllerRotation = Controller->GetControlRotation();
+	
+	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
+	const FVector UpDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Z);
+	const FVector NormalizedDirection = FVector(RightDirection * AxisValue.X + UpDirection * AxisValue.Y).GetClampedToMaxSize(1.f);
+	
+	float DeltaTime = GetWorld()->GetDeltaSeconds();
+	
+	AddActorWorldOffset(NormalizedDirection * PanSpeed * DeltaTime, true );
 }
 
 void ADesktopPawn::Panning(const FInputActionValue& Value)
 {
-	if (!Controller) return;
 	const FVector2D AxisValue = Value.Get<FVector2D>();
 
-	const FRotator ControllerRotation = Controller->GetControlRotation();
-	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
-	const FVector UpDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Z);
-
-	AddMovementInput(RightDirection, AxisValue.X);
-	AddMovementInput(UpDirection, AxisValue.Y);
+	ApplyPan(AxisValue);
+	Server_Pan(AxisValue);
 }
 
 void ADesktopPawn::OnPanStarted()
@@ -383,8 +439,6 @@ void ADesktopPawn::LeftClickingReleased()
 		}
 	}
 	
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
 	PressedFurniture = nullptr;
 	LeftClickState = ELMBSate::Idle;
 }
@@ -394,7 +448,6 @@ void ADesktopPawn::OnCameraControlStarted()
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
 		bUseControllerRotationYaw = true;
-		bUseControllerRotationPitch = true;
 		bCameraControlActive = true;
 	}
 }
@@ -403,8 +456,6 @@ void ADesktopPawn::OnCameraControlStopped()
 {
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
-		bUseControllerRotationYaw = false;
-		bUseControllerRotationPitch = false;
 		bCameraControlActive = false;
 	}
 }

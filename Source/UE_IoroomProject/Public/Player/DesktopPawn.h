@@ -70,6 +70,12 @@ protected:
 	TObjectPtr<UInputAction> LeftClick;
 
 	// Properties
+	UPROPERTY(EditDefaultsOnly, Category="Movement")
+	float MovementSpeed = 1200.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Pan")
+	float PanSpeed = 1200.f;
+	
 	UPROPERTY(EditDefaultsOnly, Category="Zoom")
 	float ZoomSpeed;
 
@@ -85,16 +91,33 @@ protected:
 	TObjectPtr<AFurnitureActor> SelectedFurniture;
 
 private:
+	// movement functions
+	UFUNCTION(Server, Unreliable)
+	void Server_Move(FVector2D AxisValue);
+	void ApplyMovement(FVector2D AxisValue);
 	void Movement(const FInputActionValue& Value);
 	
+	// look functions
+	UFUNCTION(Server, Unreliable)
+	void Server_Look(FVector2D AxisValue);
+	void ApplyLook(FVector2D AxisValue);
 	void LookAround(const FInputActionValue& Value);
 	
+	// pan functions
+	UFUNCTION(Server, Unreliable)
+	void Server_Pan(FVector2D AxisValue);
+	void ApplyPan(FVector2D AxisValue);
 	void Panning(const FInputActionValue& Value);
 	void OnPanStarted();
 	void OnPanStopped();
 	
+	// zoom functions
+	UFUNCTION(Server, Unreliable)
+	void Server_Zoom(float ZoomFactor);
+	void ApplyZoom(float ZoomFactor);
 	void Zooming(const FInputActionValue& Value);
 	
+
 	void LeftClicking(const FInputActionValue& Value);
 	void LeftClickingHeld();
 	void HandleDrag();
@@ -124,7 +147,4 @@ private:
 	// Drag
 	FVector DragOffset;
 	float DragPlaneZ;
-	
-	
-	
 };
