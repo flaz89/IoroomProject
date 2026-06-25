@@ -393,6 +393,15 @@ void ADesktopPawn::HandleDrag()
 	
 }
 
+void ADesktopPawn::Server_OrbitTransform_Implementation(FVector NewLocation, FRotator NewRotation)
+{
+	if (!Controller) return;
+	
+	SetActorLocation(NewLocation);
+	Controller->SetControlRotation(NewRotation);
+	FaceRotation(NewRotation, 0.f);
+}
+
 void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 {
 	const FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
@@ -415,9 +424,16 @@ void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 	const float NewVerticalDistance = FMath::Sin(FMath::DegreesToRadians(NewElevation)) * OrbitRadius;
 	PivotToCamera = Horizontal.GetSafeNormal() * NewHorizontalDistance + FVector(0.f, 0.f, NewVerticalDistance);
 
-	SetActorLocation(EffectivePivot + PivotToCamera);
-	GetController()->SetControlRotation((EffectivePivot - GetActorLocation()).GetSafeNormal().Rotation());
+	const FVector NewLocation = EffectivePivot + PivotToCamera;
+	const FRotator NewRotation = (EffectivePivot - NewLocation).GetSafeNormal().Rotation();
+	
+	SetActorLocation(NewLocation);
+	GetController()->SetControlRotation(NewRotation);
 	LastMousePosition = CurrentMousePosition;
+	
+	//RPC
+	Server_OrbitTransform(NewLocation, NewRotation);
+	
 }
 
 void ADesktopPawn::LeftClickingReleased()

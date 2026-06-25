@@ -118,11 +118,14 @@ private:
 	void Zooming(const FInputActionValue& Value);
 	
 
+	UFUNCTION(Server, Unreliable)
+	void Server_OrbitTransform(FVector NewLocation, FRotator NewRotation);
+	void HandleOrbit(FVector2D CurrentMousePosition);
 	void LeftClicking(const FInputActionValue& Value);
 	void LeftClickingHeld();
-	void HandleDrag();
-	void HandleOrbit(FVector2D CurrentMousePosition);
 	void LeftClickingReleased();
+	
+	void HandleDrag();
 	
 	void OnCameraControlStarted();
 	void OnCameraControlStopped();
