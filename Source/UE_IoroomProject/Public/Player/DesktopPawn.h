@@ -117,14 +117,13 @@ private:
 	void ApplyZoom(float ZoomFactor);
 	void Zooming(const FInputActionValue& Value);
 	
-
+	// LMB functions (orbit/drag)
 	UFUNCTION(Server, Unreliable)
 	void Server_OrbitTransform(FVector NewLocation, FRotator NewRotation);
 	void HandleOrbit(FVector2D CurrentMousePosition);
 	void LeftClicking(const FInputActionValue& Value);
 	void LeftClickingHeld();
 	void LeftClickingReleased();
-	
 	void HandleDrag();
 	
 	void OnCameraControlStarted();

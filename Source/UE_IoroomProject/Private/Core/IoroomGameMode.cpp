@@ -3,6 +3,7 @@
 
 #include "Core/IoroomGameMode.h"
 
+#include "Core/IoroomGameState.h"
 #include "Core/IoroomPlayerController.h"
 #include "Player/DesktopPawn.h"
 
@@ -10,4 +11,5 @@ AIoroomGameMode::AIoroomGameMode()
 {
 	DefaultPawnClass = ADesktopPawn::StaticClass();
 	PlayerControllerClass = AIoroomPlayerController::StaticClass();
+	GameStateClass = AIoroomGameState::StaticClass();
 }
