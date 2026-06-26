@@ -2,14 +2,17 @@
 
 
 #include "UE_IoroomProject/Public/Core/IoroomGameInstance.h"
+
+#include "DynamicRHI.h"
 #include "RHIGlobals.h"
 #include "RHIStats.h"
 #include "Scalability.h"
 #include "GameFramework/GameUserSettings.h"
+#include "Misc/ConfigCacheIni.h"
 
 /*
  * STEPS:
- * - fisrt detect hardware and print the output
+ * - firstt detect hardware and print the output
  * - second check if it's first launch setting the bool bHasAutoDetected
  *				- if true auto set scalability tier level, set the GameUserSettings.ini with new bool value, write it on SSD
  *				- if false, scalability tier level already set, do nothing
