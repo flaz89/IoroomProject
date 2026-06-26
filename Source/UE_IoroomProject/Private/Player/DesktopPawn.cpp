@@ -8,6 +8,8 @@
 #include "Engine/World.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Player/IoroomPlayerState.h"
 
 ADesktopPawn::ADesktopPawn()
 {
@@ -52,6 +54,28 @@ void ADesktopPawn::BeginPlay()
 		InputMode.SetHideCursorDuringCapture(false);
 		PC->SetInputMode(InputMode);
 	}
+}
+
+void ADesktopPawn::ApplyPlayerVisuals(FLinearColor Color)
+{
+	if (!CustomBodyMaterial) CustomBodyMaterial = Body->CreateDynamicMaterialInstance(0);
+	if (CustomBodyMaterial) CustomBodyMaterial->SetVectorParameterValue(FName("PlayerColor"), Color);
+}
+
+void ADesktopPawn::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	
+	AIoroomPlayerState* PlayerState = NewController->GetPlayerState<AIoroomPlayerState>();
+	if (PlayerState) ApplyPlayerVisuals(PlayerState->AssignedColor);
+}
+
+void ADesktopPawn::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	
+	AIoroomPlayerState* PlayerState = GetPlayerState<AIoroomPlayerState>();
+	if (PlayerState->StencilSlot > 0)  ApplyPlayerVisuals(PlayerState->AssignedColor);
 }
 
 void ADesktopPawn::Tick(float DeltaTime)

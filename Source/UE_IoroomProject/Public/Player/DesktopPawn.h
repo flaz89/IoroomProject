@@ -7,6 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "DesktopPawn.generated.h"
 
+class UMaterialInstanceDynamic;
 class AFurnitureActor;
 class USpringArmComponent;
 class UFloatingPawnMovement;
@@ -30,9 +31,12 @@ public:
 	ADesktopPawn();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void OnRep_PlayerState() override;
+	void ApplyPlayerVisuals(FLinearColor Color);
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void PossessedBy(AController* NewController) override;
 
 	// Components
 	UPROPERTY(VisibleAnywhere)
@@ -149,4 +153,6 @@ private:
 	// Drag
 	FVector DragOffset;
 	float DragPlaneZ;
+	
+	TObjectPtr<UMaterialInstanceDynamic> CustomBodyMaterial;
 };
