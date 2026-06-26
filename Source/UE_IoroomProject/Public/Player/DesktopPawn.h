@@ -66,6 +66,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category="Actions")
 	TObjectPtr<UInputAction> Pan;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Actions")
+	TObjectPtr<UInputAction> PanActivate;
 
 	UPROPERTY(EditDefaultsOnly, Category="Actions")
 	TObjectPtr<UInputAction> Zoom;
@@ -136,6 +139,7 @@ private:
 	void UpdateHover(const APlayerController* PlayerController);
 	void UpdateCursor(APlayerController* PlayerController);
 	
+	// Pan
 	bool bCameraControlActive = false;
 	bool bIsPanning = false;
 	

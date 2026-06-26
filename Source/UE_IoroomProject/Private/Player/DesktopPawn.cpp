@@ -66,6 +66,8 @@ void ADesktopPawn::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	
+	AddTickPrerequisiteActor( NewController);
+	
 	AIoroomPlayerState* PlayerState = NewController->GetPlayerState<AIoroomPlayerState>();
 	if (PlayerState) ApplyPlayerVisuals(PlayerState->AssignedColor);
 }
@@ -158,8 +160,8 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		// MMB (Mac = left alt + LMB)
 		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Triggered, this, &ADesktopPawn::Panning);
-		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Started, this, &ADesktopPawn::OnPanStarted);
-		EnhancedInputComponent->BindAction(Pan, ETriggerEvent::Completed, this, &ADesktopPawn::OnPanStopped);
+		EnhancedInputComponent->BindAction(PanActivate, ETriggerEvent::Started, this, &ADesktopPawn::OnPanStarted);
+		EnhancedInputComponent->BindAction(PanActivate, ETriggerEvent::Completed, this, &ADesktopPawn::OnPanStopped);
 
 		// LMB
 		EnhancedInputComponent->BindAction(LeftClick, ETriggerEvent::Started, this, &ADesktopPawn::LeftClicking);
@@ -288,10 +290,12 @@ void ADesktopPawn::OnPanStarted()
 void ADesktopPawn::OnPanStopped()
 {
 	bIsPanning = false;
+	bCameraControlActive = false;
 }
 
 void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 {
+	if (bCameraControlActive) return;
 	if (!Controller) return;
 	const APlayerController* PlayerController = Cast<APlayerController>(Controller);
 	

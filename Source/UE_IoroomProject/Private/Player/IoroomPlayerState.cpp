@@ -18,15 +18,18 @@ void AIoroomPlayerState::BeginPlay()
 	Super::BeginPlay();
 
 	if (!HasAuthority()) return;
+	
+	UWorld* World = GetWorld();
+	if (!World) return;
 
-	AIoroomGameState* IoroomGameState = GetWorld()->GetGameState<AIoroomGameState>();
-	if (IoroomGameState)
-	{
-		StencilSlot = IoroomGameState->ReserveStencilSlot();
+	AIoroomGameState* IoroomGameState = World->GetGameState<AIoroomGameState>();
+	if (!IoroomGameState) return;
+	
+	StencilSlot = IoroomGameState->ReserveStencilSlot();
 
-		const uint8 Hue = static_cast<uint8>((StencilSlot - 1) * 25);
-		AssignedColor = FLinearColor::MakeFromHSV8(Hue, 200, 200);
-	}
+	const uint8 Hue = static_cast<uint8>((StencilSlot - 1) * 25);
+	AssignedColor = FLinearColor::MakeFromHSV8(Hue, 200, 200);
+	
 }
 
 /*
