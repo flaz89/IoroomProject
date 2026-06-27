@@ -68,16 +68,16 @@ void ADesktopPawn::PossessedBy(AController* NewController)
 	
 	AddTickPrerequisiteActor( NewController);
 	
-	AIoroomPlayerState* PlayerState = NewController->GetPlayerState<AIoroomPlayerState>();
-	if (PlayerState) ApplyPlayerVisuals(PlayerState->AssignedColor);
+	AIoroomPlayerState* IoroomPlayerState = NewController->GetPlayerState<AIoroomPlayerState>();
+	if (IoroomPlayerState) ApplyPlayerVisuals(IoroomPlayerState->AssignedColor);
 }
 
 void ADesktopPawn::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	
-	AIoroomPlayerState* PlayerState = GetPlayerState<AIoroomPlayerState>();
-	if (PlayerState->StencilSlot > 0)  ApplyPlayerVisuals(PlayerState->AssignedColor);
+	AIoroomPlayerState* IoroomPlayerState = GetPlayerState<AIoroomPlayerState>();
+	if (IoroomPlayerState->StencilSlot > 0)  ApplyPlayerVisuals(IoroomPlayerState->AssignedColor);
 }
 
 void ADesktopPawn::Tick(float DeltaTime)
@@ -201,9 +201,11 @@ void ADesktopPawn::Movement(const FInputActionValue& Value)
 	Server_Move(AxisValue);
 }
 
-void ADesktopPawn::Server_Look_Implementation(FVector2D AxisValue)
+void ADesktopPawn::Server_Look_Implementation(FRotator NewRotation)
 {
-	ApplyLook(AxisValue);
+	if (!Controller) return;
+	Controller->SetControlRotation(NewRotation);
+	FaceRotation(NewRotation, 0.f);
 }
 
 void ADesktopPawn::ApplyLook(const FVector2D AxisValue)
@@ -222,7 +224,7 @@ void ADesktopPawn::LookAround(const FInputActionValue& Value)
 {
 	const FVector2D AxisValue = Value.Get<FVector2D>();
 	ApplyLook(AxisValue);
-	Server_Look(AxisValue);
+	Server_Look(Controller->GetControlRotation());
 }
 
 void ADesktopPawn::Server_Zoom_Implementation(const float ZoomFactor)
