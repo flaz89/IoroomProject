@@ -132,6 +132,11 @@ private:
 	void LeftClickingHeld();
 	void LeftClickingReleased();
 	void HandleDrag();
+	// LMB functions SERVER (selection)
+	UFUNCTION(Server, Reliable)
+	void Server_SelectFurniture(AFurnitureActor* Furniture);
+	UFUNCTION(Server, Reliable)
+	void Server_DeselectFurniture();
 	
 	void OnCameraControlStarted();
 	void OnCameraControlStopped();

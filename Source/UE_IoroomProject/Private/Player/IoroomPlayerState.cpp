@@ -5,6 +5,7 @@
 
 #include "Core/IoroomGameState.h"
 #include "Engine/World.h"
+#include "Kismet/KismetMaterialLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Player/DesktopPawn.h"
 
@@ -27,9 +28,11 @@ void AIoroomPlayerState::BeginPlay()
 	
 	StencilSlot = IoroomGameState->ReserveStencilSlot();
 
-	const uint8 Hue = static_cast<uint8>((StencilSlot - 1) * 25);
-	AssignedColor = FLinearColor::MakeFromHSV8(Hue, 200, 200);
 	
+	AssignedColor = 
+		UKismetMaterialLibrary::GetVectorParameterValue(
+			GetWorld(), PlayerColorMPC, FName(FString::Printf(TEXT("PlayerColor_%d"), StencilSlot - 1))
+			);
 }
 
 /*
@@ -48,9 +51,10 @@ void AIoroomPlayerState::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 
 /*
- * AssignedColor uses ReplicatedUsing to trigger a visual update on all clients when it changes.
- * StencilSlot uses plain Replicated since clients read it on demand (furniture selection/hover),
- * so no immediate callback is needed.
+ * Both properties use ReplicatedUsing to cover all replication orderings.
+ * OnRep_StencilSlot handles the case where StencilSlot arrives after AssignedColor.
+ * OnRep_AssignedColor handles the case where AssignedColor arrives after StencilSlot.
+ * ADesktopPawn::OnRep_PlayerState handles the case where the pawn link arrives last.
  */
 void AIoroomPlayerState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -58,6 +62,12 @@ void AIoroomPlayerState::GetLifetimeReplicatedProps(TArray<class FLifetimeProper
 
 	DOREPLIFETIME(AIoroomPlayerState, AssignedColor)
 	DOREPLIFETIME(AIoroomPlayerState, StencilSlot)
+}
+
+void AIoroomPlayerState::OnRep_StencilSlot()
+{
+	ADesktopPawn* Pawn = GetPawn<ADesktopPawn>();
+	if (Pawn) Pawn->ApplyPlayerVisuals(AssignedColor);
 }
 
 /*

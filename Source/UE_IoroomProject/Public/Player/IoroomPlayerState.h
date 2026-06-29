@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerState.h"
 #include "IoroomPlayerState.generated.h"
 
+class UMaterialParameterCollection;
 /**
  * 
  */
@@ -19,14 +20,20 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(ReplicatedUsing=OnRep_StencilSlot, BlueprintReadOnly)
 	int32 StencilSlot = 0;
+	
+	UFUNCTION()
+	void OnRep_StencilSlot();
 	
 	UPROPERTY(ReplicatedUsing=OnRep_AssignedColor, BlueprintReadOnly)
 	FLinearColor AssignedColor = FLinearColor::White;
 	
 	UFUNCTION()
 	void OnRep_AssignedColor();
+	
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<UMaterialParameterCollection> PlayerColorMPC;
 	
 	
 	

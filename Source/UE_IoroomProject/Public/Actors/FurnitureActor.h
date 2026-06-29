@@ -13,11 +13,16 @@ class UE_IOROOMPROJECT_API AFurnitureActor : public AActor
 
 public:
 	AFurnitureActor();
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	bool IsSelectableFurniture() const { return SelectingStencilSlot == 0; }
 	
 	void OnHovered();
 	void OnUnHovered();
-	void OnSelected();
+	void OnSelected(int32 InStencilSlot);
 	void OnDeselected();
+	
+	
 
 protected:
 	virtual void BeginPlay() override;
@@ -29,5 +34,11 @@ protected:
 	TObjectPtr<UMaterialInterface> MouseHoverMaterial;
 	
 private:
-	bool bIsSelected = false;
+	
+	UPROPERTY(ReplicatedUsing=OnRep_SelectingStencilSlot)
+	int32 SelectingStencilSlot = 0;
+	
+	UFUNCTION()
+	void OnRep_SelectingStencilSlot();
+	
 };

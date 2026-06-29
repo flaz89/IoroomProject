@@ -59,6 +59,8 @@ void ADesktopPawn::BeginPlay()
 void ADesktopPawn::ApplyPlayerVisuals(FLinearColor Color)
 {
 	if (!CustomBodyMaterial) CustomBodyMaterial = Body->CreateDynamicMaterialInstance(0);
+	UE_LOG(LogTemp, Warning, TEXT("ApplyPlayerVisuals Color=%s  DMI=%s"),                                                                                                                                               
+		 *Color.ToString(), CustomBodyMaterial ? TEXT("OK") : TEXT("NULL"));
 	if (CustomBodyMaterial) CustomBodyMaterial->SetVectorParameterValue(FName("PlayerColor"), Color);
 }
 
@@ -103,10 +105,17 @@ void ADesktopPawn::UpdateHover(const APlayerController* PlayerController)
 		HoveredFurniture = nullptr;
 		return;
 	}
+	
+	// if someone selects the furniture the player is hovering
+	if (HoveredFurniture && !HoveredFurniture->IsSelectableFurniture())                                                                                                                                                     
+	{                                                                                                                                                                                                                       
+		HoveredFurniture->OnUnHovered();                                                                                                                                                                                    
+		HoveredFurniture = nullptr;                                                                                                                                                                                         
+	}      
 
 	if (AFurnitureActor* HitActor = Cast<AFurnitureActor>(Hit.GetActor()))
 	{
-		if (HitActor != HoveredFurniture && HitActor != SelectedFurniture)
+		if (HitActor != HoveredFurniture && HitActor != SelectedFurniture && HitActor->IsSelectableFurniture())
 		{
 			if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
 			HitActor -> OnHovered();
@@ -423,6 +432,26 @@ void ADesktopPawn::HandleDrag()
 	
 }
 
+void ADesktopPawn::Server_SelectFurniture_Implementation(AFurnitureActor* Furniture)
+{
+	if (Furniture == nullptr) return;
+	if (!Furniture->IsSelectableFurniture()) return;
+	if (SelectedFurniture) SelectedFurniture->OnDeselected();
+	
+	if (AIoroomPlayerState* IoroomPlayerState = GetPlayerState<AIoroomPlayerState>())
+	{
+		Furniture->OnSelected(IoroomPlayerState->StencilSlot);
+		SelectedFurniture = Furniture;
+	}
+}
+
+void ADesktopPawn::Server_DeselectFurniture_Implementation()
+{
+	if (SelectedFurniture == nullptr) return;
+	SelectedFurniture->OnDeselected();
+	SelectedFurniture = nullptr;
+}
+
 void ADesktopPawn::Server_OrbitTransform_Implementation(FVector NewLocation, FRotator NewRotation)
 {
 	if (!Controller) return;
@@ -473,14 +502,13 @@ void ADesktopPawn::LeftClickingReleased()
 	{
 		if (PressedFurniture)
 		{
-			if (SelectedFurniture) SelectedFurniture->OnDeselected();
-			PressedFurniture->OnSelected();
+			Server_SelectFurniture(PressedFurniture);
 			PressedFurniture->OnUnHovered();
 			SelectedFurniture = PressedFurniture;
 		}
 		else
 		{
-			if (SelectedFurniture) SelectedFurniture->OnDeselected();
+			if (SelectedFurniture) Server_DeselectFurniture();
 			SelectedFurniture = nullptr;
 		}
 	}
