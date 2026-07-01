@@ -51,9 +51,9 @@ void AFurnitureActor::OnRep_SelectingStencilSlot()
 	if (bSelected) FurnitureMesh->SetCustomDepthStencilValue(SelectingStencilSlot);
 }
 
-void AFurnitureActor::OnHovered()
+void AFurnitureActor::OnHovered(UMaterialInterface* OverlayMaterial)
 {
-	FurnitureMesh->SetOverlayMaterial(MouseHoverMaterial);
+	FurnitureMesh->SetOverlayMaterial(OverlayMaterial);
 }
 
 void AFurnitureActor::OnUnHovered()

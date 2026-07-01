@@ -3,6 +3,7 @@
 
 #include "Player/IoroomPlayerState.h"
 
+#include "TimerManager.h"
 #include "Core/IoroomGameState.h"
 #include "Engine/World.h"
 #include "Kismet/KismetMaterialLibrary.h"
@@ -33,6 +34,11 @@ void AIoroomPlayerState::BeginPlay()
 		UKismetMaterialLibrary::GetVectorParameterValue(
 			GetWorld(), PlayerColorMPC, FName(FString::Printf(TEXT("PlayerColor_%d"), StencilSlot - 1))
 			);
+	
+	GetWorld()->GetTimerManager().SetTimerForNextTick([this] ()
+	{
+		if (ADesktopPawn* Pawn = GetPawn<ADesktopPawn>()) Pawn->ApplyPlayerVisuals( AssignedColor);
+	});
 }
 
 /*

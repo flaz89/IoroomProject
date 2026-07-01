@@ -17,7 +17,7 @@ public:
 	
 	bool IsSelectableFurniture() const { return SelectingStencilSlot == 0; }
 	
-	void OnHovered();
+	void OnHovered(UMaterialInterface* OverlayMaterial);
 	void OnUnHovered();
 	void OnSelected(int32 InStencilSlot);
 	void OnDeselected();
@@ -29,9 +29,6 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UStaticMeshComponent> FurnitureMesh;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Material")
-	TObjectPtr<UMaterialInterface> MouseHoverMaterial;
 	
 private:
 	

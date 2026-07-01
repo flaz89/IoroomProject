@@ -59,9 +59,10 @@ void ADesktopPawn::BeginPlay()
 void ADesktopPawn::ApplyPlayerVisuals(FLinearColor Color)
 {
 	if (!CustomBodyMaterial) CustomBodyMaterial = Body->CreateDynamicMaterialInstance(0);
-	UE_LOG(LogTemp, Warning, TEXT("ApplyPlayerVisuals Color=%s  DMI=%s"),                                                                                                                                               
-		 *Color.ToString(), CustomBodyMaterial ? TEXT("OK") : TEXT("NULL"));
 	if (CustomBodyMaterial) CustomBodyMaterial->SetVectorParameterValue(FName("PlayerColor"), Color);
+	
+	if (!HoverMaterial && HoverBaseMaterial) HoverMaterial = UMaterialInstanceDynamic::Create(HoverBaseMaterial, this);
+	if (HoverMaterial) HoverMaterial->SetVectorParameterValue(FName("HoverColor"), Color);
 }
 
 void ADesktopPawn::PossessedBy(AController* NewController)
@@ -79,12 +80,14 @@ void ADesktopPawn::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	
 	AIoroomPlayerState* IoroomPlayerState = GetPlayerState<AIoroomPlayerState>();
-	if (IoroomPlayerState->StencilSlot > 0)  ApplyPlayerVisuals(IoroomPlayerState->AssignedColor);
+	if (IoroomPlayerState && IoroomPlayerState->StencilSlot > 0)  ApplyPlayerVisuals(IoroomPlayerState->AssignedColor);
 }
 
 void ADesktopPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	if (!IsLocallyControlled()) return;
 	
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
@@ -118,7 +121,7 @@ void ADesktopPawn::UpdateHover(const APlayerController* PlayerController)
 		if (HitActor != HoveredFurniture && HitActor != SelectedFurniture && HitActor->IsSelectableFurniture())
 		{
 			if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
-			HitActor -> OnHovered();
+			HitActor -> OnHovered(HoverMaterial);
 			HoveredFurniture = HitActor;
 		}
 	}

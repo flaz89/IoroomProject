@@ -163,5 +163,14 @@ private:
 	FVector DragOffset;
 	float DragPlaneZ;
 	
+	// start Materials
+	UPROPERTY(EditDefaultsOnly, Category="Materials")
+	TObjectPtr<UMaterialInterface> HoverBaseMaterial;
+	
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> HoverMaterial;
+	
+	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> CustomBodyMaterial;
+	// end Materials
 };
