@@ -118,11 +118,20 @@ void ADesktopPawn::UpdateHover(const APlayerController* PlayerController)
 
 	if (AFurnitureActor* HitActor = Cast<AFurnitureActor>(Hit.GetActor()))
 	{
-		if (HitActor != HoveredFurniture && HitActor != SelectedFurniture && HitActor->IsSelectableFurniture())
+		// A furniture is hoverable only if it isn't locked by another player and isn't our own selection
+		if (HitActor != SelectedFurniture && HitActor->IsSelectableFurniture())
 		{
-			if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
-			HitActor -> OnHovered(HoverMaterial);
-			HoveredFurniture = HitActor;
+			if (HitActor != HoveredFurniture)
+			{
+				if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
+				HitActor -> OnHovered(HoverMaterial);
+				HoveredFurniture = HitActor;
+			}
+		}
+		else if (HoveredFurniture) // hit a furniture we can't hover (locked by another / our own selection) -> drop hover so the cursor resets
+		{
+			HoveredFurniture -> OnUnHovered();
+			HoveredFurniture = nullptr;
 		}
 	}
 	else
@@ -391,6 +400,7 @@ void ADesktopPawn::LeftClickingHeld()
 	}
 }
 
+
 void ADesktopPawn::HandleDrag()
 {
 	if (SelectedFurniture == nullptr) return;
@@ -422,9 +432,12 @@ void ADesktopPawn::HandleDrag()
 			);
 		
 		float NewZ = SurfaceHit.bBlockingHit ? SurfaceHit.ImpactPoint.Z : DragPlaneZ;
-		// --
-		
-		SelectedFurniture->SetActorLocation(FVector(NewX, NewY, NewZ));
+
+		const FVector NewLocation(NewX, NewY, NewZ);
+		SelectedFurniture->SetActorLocation(NewLocation);
+
+		// RPC: let the server (authority) move the furniture so replicated movement reaches other clients
+		Server_DragFurniture(NewLocation);
 
 		const float NewT = (NewZ- RayOrigin.Z) / RayDirection.Z;
 		const FVector NewWorldPoint = RayOrigin + NewT * RayDirection;
@@ -432,7 +445,6 @@ void ADesktopPawn::HandleDrag()
 		DragOffset.Y = NewY - NewWorldPoint.Y;
 		DragPlaneZ = NewZ;
 	}
-	
 }
 
 void ADesktopPawn::Server_SelectFurniture_Implementation(AFurnitureActor* Furniture)
@@ -458,10 +470,22 @@ void ADesktopPawn::Server_DeselectFurniture_Implementation()
 void ADesktopPawn::Server_OrbitTransform_Implementation(FVector NewLocation, FRotator NewRotation)
 {
 	if (!Controller) return;
-	
+
 	SetActorLocation(NewLocation);
 	Controller->SetControlRotation(NewRotation);
 	FaceRotation(NewRotation, 0.f);
+}
+
+/*
+ * Server-authoritative drag: moves the furniture this pawn currently owns the selection lock on.
+ * Uses the server-side SelectedFurniture (set in Server_SelectFurniture) rather than a passed
+ * pointer, so a client can only move furniture it has actually selected/locked. Replicated
+ * movement (SetReplicatingMovement on AFurnitureActor) then propagates NewLocation to all clients.
+ */
+void ADesktopPawn::Server_DragFurniture_Implementation(FVector NewLocation)
+{
+	if (SelectedFurniture == nullptr) return;
+	SelectedFurniture->SetActorLocation(NewLocation);
 }
 
 void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)

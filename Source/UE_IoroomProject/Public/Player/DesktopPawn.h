@@ -127,6 +127,8 @@ private:
 	// LMB functions (orbit/drag)
 	UFUNCTION(Server, Unreliable)
 	void Server_OrbitTransform(FVector NewLocation, FRotator NewRotation);
+	UFUNCTION(Server, Unreliable)
+	void Server_DragFurniture(FVector NewLocation);
 	void HandleOrbit(FVector2D CurrentMousePosition);
 	void LeftClicking(const FInputActionValue& Value);
 	void LeftClickingHeld();
