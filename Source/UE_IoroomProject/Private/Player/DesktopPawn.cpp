@@ -4,6 +4,7 @@
 
 #include "EnhancedInputComponent.h"
 #include "Actors/FurnitureActor.h"
+#include "Actors/FurnitureManipulator.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/FloatingPawnMovement.h"
@@ -376,6 +377,7 @@ void ADesktopPawn::LeftClickingHeld()
 					DragOffset = FVector(PressedFurniture->GetActorLocation().X - WorldPoint.X, PressedFurniture->GetActorLocation().Y - WorldPoint.Y, 0.0f);
 					
 					LeftClickState = ELMBSate::Dragging;
+					if (ActiveManipulator) ActiveManipulator->SetActorHiddenInGame(true);
 				} 
 				else // orbit mode
 				{
@@ -524,7 +526,6 @@ void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 
 void ADesktopPawn::LeftClickingReleased()
 {
-	
 	if (LeftClickState == ELMBSate::Pressed)
 	{
 		if (PressedFurniture)
@@ -532,12 +533,36 @@ void ADesktopPawn::LeftClickingReleased()
 			Server_SelectFurniture(PressedFurniture);
 			PressedFurniture->OnUnHovered();
 			SelectedFurniture = PressedFurniture;
+			
+			// if manipulator already exists on another furniture, destroy that one and spawn on the new selected furniture
+			if (ActiveManipulator)
+			{
+				ActiveManipulator->Destroy();
+				ActiveManipulator = nullptr;
+			}
+			if (FurnitureManipulatorClass)
+			{
+				ActiveManipulator = GetWorld()->SpawnActor<AFurnitureManipulator>(FurnitureManipulatorClass);
+				if (ActiveManipulator) ActiveManipulator->AttachTo(PressedFurniture);
+			}
+			
 		}
 		else
 		{
+			// deselect furniture, remove overlay, remove manipulator
 			if (SelectedFurniture) Server_DeselectFurniture();
 			SelectedFurniture = nullptr;
+			if (ActiveManipulator)
+			{
+				ActiveManipulator->Destroy();
+				ActiveManipulator = nullptr;
+			}
 		}
+	}
+	
+	if (LeftClickState == ELMBSate::Dragging)
+	{
+		if (ActiveManipulator) ActiveManipulator->SetActorHiddenInGame(false);
 	}
 	
 	PressedFurniture = nullptr;

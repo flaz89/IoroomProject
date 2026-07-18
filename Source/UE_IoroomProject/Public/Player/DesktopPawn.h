@@ -7,6 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "DesktopPawn.generated.h"
 
+class AFurnitureManipulator;
 class UMaterialInstanceDynamic;
 class AFurnitureActor;
 class USpringArmComponent;
@@ -96,6 +97,12 @@ protected:
 	TObjectPtr<AFurnitureActor> HoveredFurniture;
 	TObjectPtr<AFurnitureActor> PressedFurniture;
 	TObjectPtr<AFurnitureActor> SelectedFurniture;
+	
+	// Furniture manipulator
+	UPROPERTY(EditDefaultsOnly, Category="Manipulator")
+	TSubclassOf<AFurnitureManipulator> FurnitureManipulatorClass;
+	UPROPERTY()
+	TObjectPtr<AFurnitureManipulator> ActiveManipulator;
 
 private:
 	// movement functions
