@@ -30,6 +30,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	
+	// components
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USceneComponent> Root;
 	
@@ -48,5 +49,18 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UStaticMeshComponent> RotationRing;
 	
+	// properties
+	UPROPERTY(EditAnywhere, Category="Manipulator")
+	float HandleMargin = 20.f;
+	
+	UPROPERTY(EditAnywhere, Category="Manipulator")
+	float HandleHeightOffset = 0.f;
+	
+	UPROPERTY(EditAnywhere, Category="Manipulator")
+	float HandleSpaceArrowRing = 10.f;
+	
+private:
+	
+	void PositionHandle(const FBox& Bounds);
 
 };

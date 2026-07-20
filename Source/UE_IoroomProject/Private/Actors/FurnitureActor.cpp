@@ -4,6 +4,7 @@
 #include "Actors/FurnitureActor.h"
 
 #include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -80,6 +81,18 @@ void AFurnitureActor::OnDeselected()
 	if (!HasAuthority()) return;
 	SelectingStencilSlot = 0;
 	OnRep_SelectingStencilSlot();
+}
+
+FBox AFurnitureActor::GetMeshBoundingBox() const
+{
+	const UStaticMesh* Mesh = FurnitureMesh->GetStaticMesh();
+	if (!Mesh) return FBox();
+
+	const FBox MeshBoundingBox = Mesh->GetBoundingBox();
+	const FVector ActorScale = GetActorScale3D();
+	
+	// return bounding box scaled by the actor scale
+	return FBox(MeshBoundingBox.Min * ActorScale, MeshBoundingBox.Max * ActorScale);
 }
 
 

@@ -22,6 +22,8 @@ public:
 	void OnSelected(int32 InStencilSlot);
 	void OnDeselected();
 	
+	FBox GetMeshBoundingBox() const;
+	
 	
 
 protected:
