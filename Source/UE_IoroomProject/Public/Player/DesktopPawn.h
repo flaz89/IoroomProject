@@ -7,6 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "DesktopPawn.generated.h"
 
+enum class EManipulatorHandle : uint8;
 class AFurnitureManipulator;
 class UMaterialInstanceDynamic;
 class AFurnitureActor;
@@ -15,12 +16,13 @@ class UFloatingPawnMovement;
 class UInputAction;
 class UCameraComponent;
 
-enum class ELMBSate
+enum class ELMBState
 {
 	Idle,
 	Pressed,
 	Orbiting,
-	Dragging
+	Dragging,
+	Rotating
 };
 
 UCLASS()
@@ -108,18 +110,21 @@ private:
 	// movement functions
 	UFUNCTION(Server, Unreliable)
 	void Server_Move(FVector2D AxisValue);
+	
 	void ApplyMovement(FVector2D AxisValue);
 	void Movement(const FInputActionValue& Value);
 	
 	// look functions
 	UFUNCTION(Server, Unreliable)
 	void Server_Look(FRotator NewRotation);
+	
 	void ApplyLook(FVector2D AxisValue);
 	void LookAround(const FInputActionValue& Value);
 	
 	// pan functions
 	UFUNCTION(Server, Unreliable)
 	void Server_Pan(FVector2D AxisValue);
+	
 	void ApplyPan(FVector2D AxisValue);
 	void Panning(const FInputActionValue& Value);
 	void OnPanStarted();
@@ -128,6 +133,7 @@ private:
 	// zoom functions
 	UFUNCTION(Server, Unreliable)
 	void Server_Zoom(float ZoomFactor);
+	
 	void ApplyZoom(float ZoomFactor);
 	void Zooming(const FInputActionValue& Value);
 	
@@ -136,14 +142,21 @@ private:
 	void Server_OrbitTransform(FVector NewLocation, FRotator NewRotation);
 	UFUNCTION(Server, Unreliable)
 	void Server_DragFurniture(FVector NewLocation);
+	UFUNCTION(Server, Unreliable)
+	void Server_RotateFurniture(FRotator NewRotation);
+	
 	void HandleOrbit(FVector2D CurrentMousePosition);
 	void LeftClicking(const FInputActionValue& Value);
 	void LeftClickingHeld();
 	void LeftClickingReleased();
 	void HandleDrag();
+	void HandleRotate();
+	bool NudgeSelectedFurniture(EManipulatorHandle Handle);
+	
 	// LMB functions SERVER (selection)
 	UFUNCTION(Server, Reliable)
 	void Server_SelectFurniture(AFurnitureActor* Furniture);
+	
 	UFUNCTION(Server, Reliable)
 	void Server_DeselectFurniture();
 	
@@ -152,12 +165,13 @@ private:
 	
 	void UpdateHover(const APlayerController* PlayerController);
 	void UpdateCursor(APlayerController* PlayerController);
+	void UpdateManipulatorHover(const APlayerController* PlayerController);
 	
 	// Pan
 	bool bCameraControlActive = false;
 	bool bIsPanning = false;
 	
-	ELMBSate LeftClickState = ELMBSate::Idle;
+	ELMBState LeftClickState = ELMBState::Idle;
 	
 	FVector2D MousePositionOnClick; // when LMB clicked
 	FVector2D LastMousePosition; // set each frame when LMB dragged
@@ -168,9 +182,11 @@ private:
 	FVector OrbitEntryStartPivot;
 	float OrbitEntryAlpha = 0.f;
 	
-	// Drag
+	// Drag / Rotation
 	FVector DragOffset;
 	float DragPlaneZ;
+	float RotationYawOffset;
+	float RotationPlaneZ;
 	
 	// start Materials
 	UPROPERTY(EditDefaultsOnly, Category="Materials")

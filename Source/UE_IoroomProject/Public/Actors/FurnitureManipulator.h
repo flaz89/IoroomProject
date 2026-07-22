@@ -26,6 +26,10 @@ public:
 	AFurnitureManipulator();
 	
 	void AttachTo(AFurnitureActor* Target);
+	
+	EManipulatorHandle ResolveHandle(UPrimitiveComponent* Component) const;
+	
+	void SetHoveredHandle(EManipulatorHandle Handle);
 
 protected:
 	virtual void BeginPlay() override;
@@ -51,6 +55,12 @@ protected:
 	
 	// properties
 	UPROPERTY(EditAnywhere, Category="Manipulator")
+	TObjectPtr<UMaterialInterface> BaseMaterial;
+	
+	UPROPERTY(EditAnywhere, Category="Manipulator")
+	TObjectPtr<UMaterialInterface> HoverMaterial;
+	
+	UPROPERTY(EditAnywhere, Category="Manipulator")
 	float HandleMargin = 20.f;
 	
 	UPROPERTY(EditAnywhere, Category="Manipulator")
@@ -59,8 +69,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Manipulator")
 	float HandleSpaceArrowRing = 10.f;
 	
+	
+	EManipulatorHandle HoveredHandle = EManipulatorHandle::None;
+	
 private:
 	
 	void PositionHandle(const FBox& Bounds);
+	UStaticMeshComponent* ComponentForHandle(EManipulatorHandle Handle) const;
+	
 
 };

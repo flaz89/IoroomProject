@@ -94,6 +94,7 @@ void ADesktopPawn::Tick(float DeltaTime)
 	{
 		UpdateHover(PlayerController);
 		UpdateCursor(PlayerController);
+		UpdateManipulatorHover(PlayerController);
 	}
 }
 
@@ -103,7 +104,7 @@ void ADesktopPawn::UpdateHover(const APlayerController* PlayerController)
 	PlayerController->GetHitResultUnderCursor(ECC_Visibility, false, Hit);
 	
 	// no hovering starts if panning, looking around / Orbiting / Dragging
-	if (bCameraControlActive || LeftClickState == ELMBSate::Dragging || LeftClickState == ELMBSate::Orbiting) 
+	if (bCameraControlActive || LeftClickState == ELMBState::Dragging || LeftClickState == ELMBState::Orbiting || LeftClickState == ELMBState::Rotating) 
 	{
 		if (HoveredFurniture) HoveredFurniture -> OnUnHovered();
 		HoveredFurniture = nullptr;
@@ -152,7 +153,7 @@ void ADesktopPawn::UpdateCursor(APlayerController* PlayerController)
 	
 	PlayerController->bShowMouseCursor = true;
 	
-	if (LeftClickState == ELMBSate::Dragging || LeftClickState == ELMBSate::Orbiting)
+	if (LeftClickState == ELMBState::Dragging || LeftClickState == ELMBState::Orbiting || LeftClickState == ELMBState::Rotating)
 	{
 		PlayerController->CurrentMouseCursor = EMouseCursor::GrabHandClosed;
 	}
@@ -164,6 +165,35 @@ void ADesktopPawn::UpdateCursor(APlayerController* PlayerController)
 	{
 		PlayerController->CurrentMouseCursor = EMouseCursor::Default;
 	}
+}
+
+/**
+ * Updates the hover state of the furniture manipulator based on the cursor's position.
+ * If the camera control is active or the left mouse button is in a dragging or orbiting state,
+ * the hover state is cleared. Otherwise, the manipulator's hover handle is set based on the component
+ * currently under the cursor.
+ *
+ * @param PlayerController The player controller used to determine the cursor's position and the component being hovered over.
+ */
+void ADesktopPawn::UpdateManipulatorHover(const APlayerController* PlayerController)
+{
+	if (!ActiveManipulator) return;
+	if (bCameraControlActive || LeftClickState == ELMBState::Dragging || LeftClickState == ELMBState::Orbiting || LeftClickState == ELMBState::Rotating)
+	{
+		ActiveManipulator->SetHoveredHandle(EManipulatorHandle::None);
+		return;
+	}
+	
+	FHitResult HandleHit;
+	if (PlayerController->GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1), false, HandleHit))
+	{
+		EManipulatorHandle Handle = ActiveManipulator->ResolveHandle(HandleHit.GetComponent());
+		ActiveManipulator->SetHoveredHandle(Handle);
+	}
+	else
+	{
+		ActiveManipulator->SetHoveredHandle(EManipulatorHandle::None);
+	} 
 }
 
 void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -307,7 +337,7 @@ void ADesktopPawn::OnPanStarted()
 {
 	bIsPanning = true;
 	bCameraControlActive = true;
-	LeftClickState = ELMBSate::Idle;
+	LeftClickState = ELMBState::Idle;
 	PressedFurniture = nullptr;
 }
 
@@ -325,6 +355,42 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 	
 	if (PlayerController)
 	{
+		// left-click on Manipulator
+		if (ActiveManipulator && SelectedFurniture)
+		{
+			FHitResult HandleHit;
+			if (PlayerController->GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1), false, HandleHit))
+			{
+				const EManipulatorHandle Handle = ActiveManipulator->ResolveHandle(HandleHit.GetComponent());
+				// if clicked on the ring
+				if (Handle == EManipulatorHandle::Rotate)
+				{
+					/*
+					 * count rotation based on mouse drag after grabbed ring
+					 */
+					const float PlaneZ = SelectedFurniture->GetActorLocation().Z;
+					FVector RayOrigin;
+					FVector RayDirection;
+					PlayerController->DeprojectMousePositionToWorld(RayOrigin, RayDirection);
+					if (FMath::IsNearlyZero(RayDirection.Z)) return;
+					
+					const float t = (PlaneZ - RayOrigin.Z) / RayDirection.Z;
+					const FVector WorldPoint = RayOrigin + t * RayDirection;
+					
+					const FVector Center = SelectedFurniture->GetActorLocation();
+					const float GrabAngle = FMath::RadiansToDegrees(FMath::Atan2(WorldPoint.Y - Center.Y, WorldPoint.X - Center.X));
+					
+					RotationYawOffset = SelectedFurniture->GetActorRotation().Yaw - GrabAngle;
+					RotationPlaneZ = PlaneZ;
+					LeftClickState = ELMBState::Rotating;
+					return;
+				}
+				// if clicked on the arrows
+				if (NudgeSelectedFurniture(Handle)) return;
+			}
+		}
+		
+		// left-click on normal furniture
 		FHitResult Hit;
 		PlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, false, Hit);
 		PressedFurniture = Cast<AFurnitureActor>(Hit.GetActor());
@@ -335,7 +401,7 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 		MousePositionOnClick = FVector2D(MouseX, MouseY);
 		
 		OrbitPivot = Hit.ImpactPoint;
-		LeftClickState = ELMBSate::Pressed;
+		LeftClickState = ELMBState::Pressed;
 		DrawDebugSphere(GetWorld(), OrbitPivot, 10.f, 10, FColor::Red, false, 1.5f);
 	}
 }
@@ -357,7 +423,7 @@ void ADesktopPawn::LeftClickingHeld()
 		PlayerController->GetMousePosition(CurrentMouseX, CurrentMouseY);
 		const FVector2D CurrentMousePosition = FVector2D(CurrentMouseX, CurrentMouseY);
 		
-		if (LeftClickState == ELMBSate::Pressed) // set in LeftClicking()
+		if (LeftClickState == ELMBState::Pressed) // set in LeftClicking()
 		{
 			if ((CurrentMousePosition - MousePositionOnClick).Size() > OrbitDragThreshold) // if player is dragging
 			{
@@ -376,7 +442,7 @@ void ADesktopPawn::LeftClickingHeld()
 					const FVector WorldPoint = RayOrigin + t * RayDirection;
 					DragOffset = FVector(PressedFurniture->GetActorLocation().X - WorldPoint.X, PressedFurniture->GetActorLocation().Y - WorldPoint.Y, 0.0f);
 					
-					LeftClickState = ELMBSate::Dragging;
+					LeftClickState = ELMBState::Dragging;
 					if (ActiveManipulator) ActiveManipulator->SetActorHiddenInGame(true);
 				} 
 				else // orbit mode
@@ -387,15 +453,19 @@ void ADesktopPawn::LeftClickingHeld()
 					
 					bUseControllerRotationYaw = true;
 					bUseControllerRotationPitch = true;
-					LeftClickState = ELMBSate::Orbiting;
+					LeftClickState = ELMBState::Orbiting;
 				}
 			}
 		}
-		else if (LeftClickState == ELMBSate::Orbiting)
+		else if (LeftClickState == ELMBState::Rotating)
+		{
+			HandleRotate();
+		}
+		else if (LeftClickState == ELMBState::Orbiting)
 		{
 			HandleOrbit(CurrentMousePosition);
 		}
-		else if (LeftClickState == ELMBSate::Dragging)
+		else if (LeftClickState == ELMBState::Dragging)
 		{
 			HandleDrag();
 		}
@@ -449,6 +519,76 @@ void ADesktopPawn::HandleDrag()
 	}
 }
 
+void ADesktopPawn::HandleRotate()
+{
+	if (SelectedFurniture == nullptr) return;
+	
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		FVector RayOrigin;
+		FVector RayDirection;
+		PlayerController->DeprojectMousePositionToWorld(RayOrigin, RayDirection);
+		if (FMath::IsNearlyZero(RayDirection.Z)) return;
+		
+		float t = (RotationPlaneZ - RayOrigin.Z) / RayDirection.Z;
+		const FVector WorldPoint = RayOrigin + t * RayDirection;
+
+		const FVector Center = SelectedFurniture->GetActorLocation();
+		float CurrentAngle = FMath::RadiansToDegrees(FMath::Atan2(WorldPoint.Y - Center.Y, WorldPoint.X - Center.X));
+		float NewYaw = CurrentAngle + RotationYawOffset;
+		
+		float RotationSnap = 15.f;
+		if (const AIoroomPlayerState* PlayerState = GetPlayerState<AIoroomPlayerState>())
+		{
+			RotationSnap = PlayerState->GetRotStep();
+		}
+		
+		NewYaw = FMath::GridSnap(NewYaw, RotationSnap);
+		
+		FRotator NewRotation = SelectedFurniture->GetActorRotation();
+		NewRotation.Yaw = NewYaw;
+		SelectedFurniture->SetActorRotation(NewRotation);
+		Server_RotateFurniture(NewRotation);
+	}
+}
+
+/**
+ * Nudges the currently selected furniture in a specified direction based on the manipulator handle provided.
+ * The nudging operation moves the furniture by a grid step size in the given direction.
+ *
+ * @param Handle The manipulator handle indicating the direction to nudge the selected furniture.
+ *               Accepted values include MoveXPlus, MoveXMinus, MoveYPlus, and MoveYMinus.
+ * @return Returns true if the operation is successful; false otherwise. The operation fails if no furniture is selected
+ *         or if an invalid handle is provided.
+ */
+bool ADesktopPawn::NudgeSelectedFurniture(EManipulatorHandle Handle)
+{
+	if (SelectedFurniture == nullptr) return false;
+	
+	// get directionF
+	FVector Direction;
+	switch (Handle)
+	{
+		case EManipulatorHandle::MoveXPlus: Direction = SelectedFurniture->GetActorForwardVector(); break;
+		case EManipulatorHandle::MoveXMinus: Direction = -SelectedFurniture->GetActorForwardVector(); break;
+		case EManipulatorHandle::MoveYPlus: Direction = SelectedFurniture->GetActorRightVector(); break;
+		case EManipulatorHandle::MoveYMinus: Direction = -SelectedFurniture->GetActorRightVector(); break;
+		default: return false;
+	}
+	
+	// get step distance
+	float GridStep = 20.f;
+	if (AIoroomPlayerState* IoroomPlayerState = GetPlayerState<AIoroomPlayerState>())
+	{
+		GridStep = IoroomPlayerState->GetGridStep();
+	}
+	
+	const FVector NewLocation = SelectedFurniture->GetActorLocation() + Direction * GridStep;
+	SelectedFurniture->SetActorLocation(NewLocation);
+	Server_DragFurniture(NewLocation);
+	return true;
+}
+
 void ADesktopPawn::Server_SelectFurniture_Implementation(AFurnitureActor* Furniture)
 {
 	if (Furniture == nullptr) return;
@@ -490,6 +630,12 @@ void ADesktopPawn::Server_DragFurniture_Implementation(FVector NewLocation)
 	SelectedFurniture->SetActorLocation(NewLocation);
 }
 
+void ADesktopPawn::Server_RotateFurniture_Implementation(FRotator NewRotation)
+{
+	if (SelectedFurniture == nullptr) return;
+	SelectedFurniture->SetActorRotation(NewRotation);
+}
+
 void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 {
 	const FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
@@ -526,7 +672,7 @@ void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 
 void ADesktopPawn::LeftClickingReleased()
 {
-	if (LeftClickState == ELMBSate::Pressed)
+	if (LeftClickState == ELMBState::Pressed)
 	{
 		if (PressedFurniture)
 		{
@@ -560,13 +706,13 @@ void ADesktopPawn::LeftClickingReleased()
 		}
 	}
 	
-	if (LeftClickState == ELMBSate::Dragging)
+	if (LeftClickState == ELMBState::Dragging)
 	{
 		if (ActiveManipulator) ActiveManipulator->SetActorHiddenInGame(false);
 	}
 	
 	PressedFurniture = nullptr;
-	LeftClickState = ELMBSate::Idle;
+	LeftClickState = ELMBState::Idle;
 }
 
 void ADesktopPawn::OnCameraControlStarted()

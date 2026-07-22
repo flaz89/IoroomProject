@@ -86,3 +86,30 @@ void AIoroomPlayerState::OnRep_AssignedColor()
 	ADesktopPawn* Pawn = GetPawn<ADesktopPawn>();
 	if (Pawn) Pawn->ApplyPlayerVisuals(AssignedColor);
 }
+
+
+float AIoroomPlayerState::GetGridStep() const
+{
+	switch (GridSnap)
+	{
+		case EGridSnap::Minimum: return 1.f;
+		case EGridSnap::Fine: return 5.f;
+		case EGridSnap::Small: return 20.f;
+		case EGridSnap::Medium: return 50.f;
+		case EGridSnap::Large: return 100.f;
+		default: return 20.f;
+	}
+}
+
+float AIoroomPlayerState::GetRotStep() const
+{
+	switch (RotationSnap)
+	{
+		case ERotationSnap::Minimum: return 1.f;
+		case ERotationSnap::Fine: return 5.f;
+		case ERotationSnap::Small: return 20.f;
+		case ERotationSnap::Medium: return 50.f;
+		case ERotationSnap::Large: return 100.f;
+		default: return 20.f;
+	}
+}
