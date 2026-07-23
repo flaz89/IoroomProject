@@ -10,7 +10,8 @@ enum class EGridSnap : uint8
 	Fine,		// 5cm
 	Small,		// 20cm
 	Medium,		// 50cm
-	Large		// 100cm
+	Large,		// 100cm
+	Count UMETA(Hidden)
 };
 
 UENUM(BlueprintType)
@@ -20,6 +21,7 @@ enum class ERotationSnap : uint8
 	Fine,		// 5°
 	Small,		// 15°
 	Medium,		// 45°
-	Large		// 90°
+	Large,		// 90°
+	Count UMETA(Hidden)
 };
 

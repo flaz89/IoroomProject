@@ -8,6 +8,7 @@
 #include "GameFramework/PlayerState.h"
 #include "IoroomPlayerState.generated.h"
 
+class USnapSettingsViewModel;
 class UMaterialParameterCollection;
 /**
  * 
@@ -49,8 +50,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Grid")
 	ERotationSnap RotationSnap = ERotationSnap::Fine;
 	
+	// ViewModels
+	UPROPERTY(Transient)
+	TObjectPtr<USnapSettingsViewModel> SnapSettingsViewModel;
 	
+private:
 	
-	
-	
+	void InitializePlayerColor();
+	void InitializeViewModels();
+	void RemoveViewModels();
 };
