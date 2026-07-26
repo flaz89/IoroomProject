@@ -7,6 +7,7 @@
 #include "Core/Types/IoroomTypes.h"
 #include "SnapSettingsViewModel.generated.h"
 
+class AIoroomPlayerState;
 /**
  * 
  */
@@ -27,11 +28,13 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void CycleRotationSnap();
 	
-	
+	// VM created in Playerstate so owner is PlayerState
+	AIoroomPlayerState* GetOwningPlayerState() const;
+
 private:
 	UPROPERTY(BlueprintReadWrite, FieldNotify, Setter, Getter, meta=(AllowPrivateAccess))
-	EGridSnap GridSnap = EGridSnap::Medium;
+	EGridSnap GridSnap;
 	
 	UPROPERTY(BlueprintReadWrite, FieldNotify, Setter, Getter, meta=(AllowPrivateAccess))
-	ERotationSnap RotationSnap = ERotationSnap::Fine;
+	ERotationSnap RotationSnap;
 };

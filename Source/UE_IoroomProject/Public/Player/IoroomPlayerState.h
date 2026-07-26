@@ -32,6 +32,9 @@ public:
 	float GetGridStep() const;
 	float GetRotStep() const;
 	
+	UFUNCTION(BlueprintImplementableEvent, Category="UI")
+	void OnViewModelsReady();
+	
 	UPROPERTY(ReplicatedUsing=OnRep_StencilSlot, BlueprintReadOnly)
 	int32 StencilSlot = 0;
 	

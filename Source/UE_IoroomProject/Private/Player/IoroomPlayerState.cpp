@@ -83,15 +83,17 @@ void AIoroomPlayerState::InitializeViewModels()
 	SnapSettingsViewModel = NewObject<USnapSettingsViewModel>(this);
 	SnapSettingsViewModel->SetGridSnap(GridSnap);
 	SnapSettingsViewModel->SetRotationSnap(RotationSnap);
-	
-	UMVVMGameSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UMVVMGameSubsystem>();
+
+	const UMVVMGameSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UMVVMGameSubsystem>();
 	if (!Subsystem) {UE_LOG(LogTemp, Warning, TEXT("exit: No UMVVMGameSubsystem found")); return;}
 	
 	UMVVMViewModelCollectionObject* ViewModelCollection = Subsystem->GetViewModelCollection();
+	if (!ViewModelCollection) return;
 	FMVVMViewModelContext Context(USnapSettingsViewModel::StaticClass(), SnapSettingsContextName);
 	if (ensure(ViewModelCollection->AddViewModelInstance(Context, SnapSettingsViewModel)))
 	{
 		UE_LOG(LogTemp, Log, TEXT("MVVMSnapSetting registered"));
+		OnViewModelsReady();
 	}
 }
 
@@ -104,6 +106,7 @@ void AIoroomPlayerState::RemoveViewModels()
 	if (!Subsystem) return;
 	
 	UMVVMViewModelCollectionObject* ViewModelCollection = Subsystem->GetViewModelCollection();
+	if (!ViewModelCollection) return;
 	FMVVMViewModelContext Context(USnapSettingsViewModel::StaticClass(), SnapSettingsContextName);
 	ViewModelCollection->RemoveViewModel(Context);
 }

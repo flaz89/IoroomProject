@@ -3,6 +3,9 @@
 
 #include "UI/ViewModels/SnapSettingsViewModel.h"
 
+#include "GameFramework/PlayerState.h"
+#include "Player/IoroomPlayerState.h"
+
 /**
  * Sets the grid snapping level to the specified value.
  *
@@ -14,6 +17,10 @@
  */
 void USnapSettingsViewModel::SetGridSnap(EGridSnap NewGridSnap)
 {
+	if (AIoroomPlayerState* PlayerState = GetOwningPlayerState())
+	{
+		PlayerState->GridSnap = NewGridSnap;
+	}
 	UE_MVVM_SET_PROPERTY_VALUE(GridSnap, NewGridSnap);
 }
 
@@ -21,13 +28,17 @@ void USnapSettingsViewModel::SetGridSnap(EGridSnap NewGridSnap)
  * Sets the rotation snapping level to the specified value.
  *
  * This method updates the rotation snapping level used in the application.
- * The snapping level determines the granularity of rotation operations.
+ * The snapping level determines the granularity of rotation for snapping operations.
  *
  * @param NewRotationSnap The new rotation snapping level to set.
  *                        It must be a valid value of the ERotationSnap enumeration.
  */
 void USnapSettingsViewModel::SetRotationSnap(ERotationSnap NewRotationSnap)
 {
+	if (AIoroomPlayerState* PlayerState = GetOwningPlayerState())
+	{
+		PlayerState->RotationSnap = NewRotationSnap;
+	}
 	UE_MVVM_SET_PROPERTY_VALUE(RotationSnap, NewRotationSnap);
 }
 
@@ -52,14 +63,23 @@ ERotationSnap USnapSettingsViewModel::GetRotationSnap() const
  */
 void USnapSettingsViewModel::CycleGridSnap()
 {
-	const uint8 CurrentGridSnap = static_cast<uint8>(GridSnap);
+	const AIoroomPlayerState* PlayerState = GetOwningPlayerState();
+	if (!PlayerState) return;
+	const uint8 CurrentGridSnap = static_cast<uint8>(PlayerState->GridSnap);
 	const uint8 NewGridSnap = (CurrentGridSnap + 1) % static_cast<uint8>(EGridSnap::Count);
 	SetGridSnap(static_cast<EGridSnap>(NewGridSnap));
 }
 
 void USnapSettingsViewModel::CycleRotationSnap()
 {
-	uint8 CurrentRotSnap = static_cast<uint8>(RotationSnap);
-	uint8 NewRotSnap = (CurrentRotSnap + 1) % static_cast<uint8>(ERotationSnap::Count);
+	const AIoroomPlayerState* PlayerState = GetOwningPlayerState();
+	if (!PlayerState) return;
+	const uint8 CurrentRotSnap = static_cast<uint8>(PlayerState->RotationSnap);
+	const uint8 NewRotSnap = (CurrentRotSnap + 1) % static_cast<uint8>(ERotationSnap::Count);
 	SetRotationSnap(static_cast<ERotationSnap>(NewRotSnap));
+}
+
+AIoroomPlayerState* USnapSettingsViewModel::GetOwningPlayerState() const
+{
+	return GetTypedOuter<AIoroomPlayerState>();
 }
