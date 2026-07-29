@@ -31,6 +31,7 @@ public:
 	
 	// start functions bound to EnhancedInput in DesktopPawn.cpp 
 	void Movement(const FInputActionValue& Value);
+	void Zooming(const FInputActionValue& Value);
 	// end functions
 	
 	
@@ -44,4 +45,11 @@ private:
 	UFUNCTION(Server, Unreliable)
 	void Server_Move(FVector2D AxisValue);
 	// start movement functions
+	
+	// start zoom functions
+	void ApplyZoom(float ZoomFactor);
+	
+	UFUNCTION(Server, Unreliable)
+	void Server_Zoom(float ZoomFactor);
+	// end zoom functions
 };

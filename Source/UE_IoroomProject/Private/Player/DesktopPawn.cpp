@@ -200,7 +200,7 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		EnhancedInputComponent->BindAction(Move, ETriggerEvent::Triggered, CameraControl.Get(), &UCameraControlComponent::Movement);
-		EnhancedInputComponent->BindAction(Zoom, ETriggerEvent::Triggered, this, &ADesktopPawn::Zooming);
+		EnhancedInputComponent->BindAction(Zoom, ETriggerEvent::Triggered, CameraControl.Get(), &UCameraControlComponent::Zooming);
 
 		// RMB
 		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, this, &ADesktopPawn::LookAround);
@@ -247,33 +247,6 @@ void ADesktopPawn::LookAround(const FInputActionValue& Value)
 	const FVector2D AxisValue = Value.Get<FVector2D>();
 	ApplyLook(AxisValue);
 	Server_Look(Controller->GetControlRotation());
-}
-
-void ADesktopPawn::Server_Zoom_Implementation(const float ZoomFactor)
-{
-	ApplyZoom(ZoomFactor);
-}
-
-void ADesktopPawn::ApplyZoom(const float ZoomFactor)
-{
-	/*if (!Controller) return;
-	const FRotator ControllerRotation = Controller->GetControlRotation();
-
-	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
-
-	AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);*/
-}
-
-void ADesktopPawn::Zooming(const FInputActionValue& Value)
-{
-	float ZoomFactor = Value.Get<float>();
-	
-	#if PLATFORM_WINDOWS
-		ZoomFactor = -ZoomFactor;
-	#endif
-	
-	ApplyZoom(ZoomFactor);
-	Server_Zoom(ZoomFactor);
 }
 
 void ADesktopPawn::Server_Pan_Implementation(FVector2D AxisValue)

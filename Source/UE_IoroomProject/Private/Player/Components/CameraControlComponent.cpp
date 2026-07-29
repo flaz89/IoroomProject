@@ -6,6 +6,7 @@
 #include "Engine/World.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 
 
 UCameraControlComponent::UCameraControlComponent()
@@ -14,9 +15,9 @@ UCameraControlComponent::UCameraControlComponent()
 	SetIsReplicatedByDefault( true);
 	
 	ZoomSpeed = 5.f;
-#if PLATFORM_WINDOWS
+	#if PLATFORM_WINDOWS
 	ZoomSpeed = 20.f;
-#endif
+	#endif
 }
 
 
@@ -74,4 +75,48 @@ void UCameraControlComponent::Server_Move_Implementation(FVector2D AxisValue)
 }
 
 // -------------------------------------------------------------------------------------------------------------------- Z O O M
+/**
+ * Adjusts the camera zoom level based on input action value and synchronizes the zoom adjustment with the server.
+ *
+ * @param Value The input action value representing the zoom factor as a float.
+ */
+void UCameraControlComponent::Zooming(const FInputActionValue& Value)
+{
+	float ZoomFactor = Value.Get<float>();
+	
+	#if PLATFORM_WINDOWS
+	ZoomFactor = -ZoomFactor;
+	#endif
+	
+	ApplyZoom(ZoomFactor);
+	Server_Zoom(ZoomFactor);
+}
 
+/**
+ * Adjusts the camera's position by applying a zoom operation based on the provided zoom factor.
+ *
+ * @param ZoomFactor A float value representing the magnitude and direction of the zoom operation.
+ *                   A positive value moves the camera forward, while a negative value moves the camera backward.
+ */
+void UCameraControlComponent::ApplyZoom(float ZoomFactor)
+{
+	if (!OwnerPawn) return;
+	AController* Controller = OwnerPawn->GetController();
+	if (!Controller) return;
+	const FRotator ControllerRotation = Controller->GetControlRotation();
+
+	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
+
+	OwnerPawn->AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);
+}
+
+/**
+ * Executes the server-side zoom functionality by applying a zoom factor to adjust the camera's position.
+ *
+ * @param ZoomFactor The input value determining the scaling factor for zooming. Positive values zoom in,
+ *        while negative values zoom out.
+ */
+void UCameraControlComponent::Server_Zoom_Implementation(float ZoomFactor)
+{
+	ApplyZoom(ZoomFactor);
+}

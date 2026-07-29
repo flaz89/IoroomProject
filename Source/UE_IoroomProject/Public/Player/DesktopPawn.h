@@ -116,13 +116,6 @@ private:
 	void OnPanStarted();
 	void OnPanStopped();
 	
-	// zoom functions
-	UFUNCTION(Server, Unreliable)
-	void Server_Zoom(float ZoomFactor);
-	
-	void ApplyZoom(float ZoomFactor);
-	void Zooming(const FInputActionValue& Value);
-	
 	// LMB functions (orbit/drag)
 	UFUNCTION(Server, Unreliable)
 	void Server_OrbitTransform(FVector NewLocation, FRotator NewRotation);
