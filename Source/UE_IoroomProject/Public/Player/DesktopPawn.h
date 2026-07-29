@@ -185,8 +185,9 @@ private:
 	// Drag / Rotation
 	FVector DragOffset;
 	float DragPlaneZ;
-	float RotationYawOffset;
-	float RotationPlaneZ;
+	float RotationGrabAngle = 0.f;
+	float RotationStartYaw = 0.f;
+	float RotationPlaneZ = 0.f;
 	
 	// start Materials
 	UPROPERTY(EditDefaultsOnly, Category="Materials")

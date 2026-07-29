@@ -380,7 +380,8 @@ void ADesktopPawn::LeftClicking(const FInputActionValue& Value)
 					const FVector Center = SelectedFurniture->GetActorLocation();
 					const float GrabAngle = FMath::RadiansToDegrees(FMath::Atan2(WorldPoint.Y - Center.Y, WorldPoint.X - Center.X));
 					
-					RotationYawOffset = SelectedFurniture->GetActorRotation().Yaw - GrabAngle;
+					RotationStartYaw = SelectedFurniture->GetActorRotation().Yaw;
+					RotationGrabAngle = GrabAngle;
 					RotationPlaneZ = PlaneZ;
 					LeftClickState = ELMBState::Rotating;
 					return;
@@ -529,24 +530,23 @@ void ADesktopPawn::HandleRotate()
 		FVector RayDirection;
 		PlayerController->DeprojectMousePositionToWorld(RayOrigin, RayDirection);
 		if (FMath::IsNearlyZero(RayDirection.Z)) return;
-		
-		float t = (RotationPlaneZ - RayOrigin.Z) / RayDirection.Z;
+
+		const float t = (RotationPlaneZ - RayOrigin.Z) / RayDirection.Z;
 		const FVector WorldPoint = RayOrigin + t * RayDirection;
 
 		const FVector Center = SelectedFurniture->GetActorLocation();
-		float CurrentAngle = FMath::RadiansToDegrees(FMath::Atan2(WorldPoint.Y - Center.Y, WorldPoint.X - Center.X));
-		float NewYaw = CurrentAngle + RotationYawOffset;
+		const float CurrentAngle = FMath::RadiansToDegrees(FMath::Atan2(WorldPoint.Y - Center.Y, WorldPoint.X - Center.X));
 		
 		float RotationSnap = 15.f;
 		if (const AIoroomPlayerState* PlayerState = GetPlayerState<AIoroomPlayerState>())
 		{
 			RotationSnap = PlayerState->GetRotStep();
 		}
-		
-		NewYaw = FMath::GridSnap(NewYaw, RotationSnap);
+
+		const float DeltaSnap = FMath::GridSnap(CurrentAngle - RotationGrabAngle, RotationSnap);
 		
 		FRotator NewRotation = SelectedFurniture->GetActorRotation();
-		NewRotation.Yaw = NewYaw;
+		NewRotation.Yaw = RotationStartYaw + DeltaSnap;
 		SelectedFurniture->SetActorRotation(NewRotation);
 		Server_RotateFurniture(NewRotation);
 	}
