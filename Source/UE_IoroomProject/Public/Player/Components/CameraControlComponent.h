@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputActionValue.h"
 #include "Components/ActorComponent.h"
 #include "CameraControlComponent.generated.h"
 
@@ -15,9 +16,32 @@ class UE_IOROOMPROJECT_API UCameraControlComponent : public UActorComponent
 public:
 	UCameraControlComponent();
 	virtual void BeginPlay() override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Movement")
+	float MovementSpeed = 1200.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Pan")
+	float PanSpeed = 1200.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Zoom")
+	float ZoomSpeed;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Orbit")
+	float OrbitSensitivity = 0.5f;
+	
+	// start functions bound to EnhancedInput in DesktopPawn.cpp 
+	void Movement(const FInputActionValue& Value);
+	// end functions
+	
 	
 private:
 	UPROPERTY()
 	TObjectPtr<APawn> OwnerPawn;
+	
+	// start movement functions
+	void ApplyMovement(FVector2D AxisValue);
+	
+	UFUNCTION(Server, Unreliable)
+	void Server_Move(FVector2D AxisValue);
+	// start movement functions
 };

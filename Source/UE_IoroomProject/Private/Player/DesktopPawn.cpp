@@ -11,6 +11,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Player/IoroomPlayerState.h"
+#include "Player/Components/CameraControlComponent.h"
 
 ADesktopPawn::ADesktopPawn()
 {
@@ -37,11 +38,7 @@ ADesktopPawn::ADesktopPawn()
 	Body->SetupAttachment(RootComponent);
 
 	FloatingPawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
-
-	ZoomSpeed = 5.f;
-	#if PLATFORM_WINDOWS
-		ZoomSpeed = 20.f;
-	#endif
+	CameraControl = CreateDefaultSubobject<UCameraControlComponent>("CameraControl");
 }
 
 void ADesktopPawn::BeginPlay()
@@ -202,7 +199,7 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		EnhancedInputComponent->BindAction(Move, ETriggerEvent::Triggered, this, &ADesktopPawn::Movement);
+		EnhancedInputComponent->BindAction(Move, ETriggerEvent::Triggered, CameraControl.Get(), &UCameraControlComponent::Movement);
 		EnhancedInputComponent->BindAction(Zoom, ETriggerEvent::Triggered, this, &ADesktopPawn::Zooming);
 
 		// RMB
@@ -224,33 +221,6 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	{
 		UE_LOG(LogTemp, Error, TEXT("DesktopPawn / SetupPlayerInputComponent() -> No input component found"));
 	}
-}
-
-void ADesktopPawn::Server_Move_Implementation(const FVector2D AxisValue)
-{
-	ApplyMovement(AxisValue);
-}
-
-
-void ADesktopPawn::ApplyMovement(const FVector2D AxisValue)
-{
-	if (!Controller) return;                                                                                                                                                                                                  
-	
-	const FRotator ControllerRotation = Controller->GetControlRotation();
-
-	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
-	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
-	const FVector NormalizedDirection = FVector(ForwardDirection * AxisValue.Y + RightDirection * AxisValue.X).GetClampedToMaxSize(1.f);
-	
-	const float DeltaTime = GetWorld()->GetDeltaSeconds();
-	AddActorWorldOffset(NormalizedDirection * MovementSpeed * DeltaTime, true);
-}
-
-void ADesktopPawn::Movement(const FInputActionValue& Value)
-{
-	const FVector2D AxisValue = Value.Get<FVector2D>();
-	ApplyMovement(AxisValue);
-	Server_Move(AxisValue);
 }
 
 void ADesktopPawn::Server_Look_Implementation(FRotator NewRotation)
@@ -286,12 +256,12 @@ void ADesktopPawn::Server_Zoom_Implementation(const float ZoomFactor)
 
 void ADesktopPawn::ApplyZoom(const float ZoomFactor)
 {
-	if (!Controller) return;
+	/*if (!Controller) return;
 	const FRotator ControllerRotation = Controller->GetControlRotation();
 
 	const FVector ForwardDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::X);
 
-	AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);
+	AddActorWorldOffset(ForwardDirection * ZoomFactor * ZoomSpeed);*/
 }
 
 void ADesktopPawn::Zooming(const FInputActionValue& Value)
@@ -313,7 +283,7 @@ void ADesktopPawn::Server_Pan_Implementation(FVector2D AxisValue)
 
 void ADesktopPawn::ApplyPan(const FVector2D AxisValue)
 {
-	if (!Controller) return;
+	/*if (!Controller) return;
 	const FRotator ControllerRotation = Controller->GetControlRotation();
 	
 	const FVector RightDirection = FRotationMatrix(ControllerRotation).GetUnitAxis(EAxis::Y);
@@ -322,7 +292,7 @@ void ADesktopPawn::ApplyPan(const FVector2D AxisValue)
 	
 	float DeltaTime = GetWorld()->GetDeltaSeconds();
 	
-	AddActorWorldOffset(NormalizedDirection * PanSpeed * DeltaTime, true );
+	AddActorWorldOffset(NormalizedDirection * PanSpeed * DeltaTime, true );*/
 }
 
 void ADesktopPawn::Panning(const FInputActionValue& Value)
@@ -638,7 +608,7 @@ void ADesktopPawn::Server_RotateFurniture_Implementation(FRotator NewRotation)
 
 void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 {
-	const FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
+	/*const FVector2D MousePositionDelta = CurrentMousePosition - LastMousePosition;
 	
 	OrbitEntryAlpha = FMath::Min(OrbitEntryAlpha + 1.f / 10.f, 1.f); // 10.f amount of frame needed (+ slow, - fast)
 	const FVector EffectivePivot = FMath::Lerp(OrbitEntryStartPivot, OrbitPivot, OrbitEntryAlpha);
@@ -666,7 +636,7 @@ void ADesktopPawn::HandleOrbit(FVector2D CurrentMousePosition)
 	LastMousePosition = CurrentMousePosition;
 	
 	//RPC
-	Server_OrbitTransform(NewLocation, NewRotation);
+	Server_OrbitTransform(NewLocation, NewRotation);*/
 	
 }
 

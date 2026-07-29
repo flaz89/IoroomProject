@@ -7,6 +7,7 @@
 #include "GameFramework/Pawn.h"
 #include "DesktopPawn.generated.h"
 
+class UCameraControlComponent;
 enum class EManipulatorHandle : uint8;
 class AFurnitureManipulator;
 class UMaterialInstanceDynamic;
@@ -56,6 +57,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UFloatingPawnMovement> FloatingPawnMovement;
+	
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UCameraControlComponent> CameraControl;
 
 	// Input Actions
 	UPROPERTY(EditDefaultsOnly, Category="Actions")
@@ -80,20 +84,9 @@ protected:
 	TObjectPtr<UInputAction> LeftClick;
 
 	// Properties
-	UPROPERTY(EditDefaultsOnly, Category="Movement")
-	float MovementSpeed = 1200.f;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Pan")
-	float PanSpeed = 1200.f;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Zoom")
-	float ZoomSpeed;
-
 	UPROPERTY(EditDefaultsOnly, Category="Orbit")
 	float OrbitDragThreshold = 5.f;
-
-	UPROPERTY(EditDefaultsOnly, Category="Orbit")
-	float OrbitSensitivity = 0.5f;
+	
 	
 	// Hovered / Pressed / Selected Actors 
 	TObjectPtr<AFurnitureActor> HoveredFurniture;
@@ -107,13 +100,6 @@ protected:
 	TObjectPtr<AFurnitureManipulator> ActiveManipulator;
 
 private:
-	// movement functions
-	UFUNCTION(Server, Unreliable)
-	void Server_Move(FVector2D AxisValue);
-	
-	void ApplyMovement(FVector2D AxisValue);
-	void Movement(const FInputActionValue& Value);
-	
 	// look functions
 	UFUNCTION(Server, Unreliable)
 	void Server_Look(FRotator NewRotation);
