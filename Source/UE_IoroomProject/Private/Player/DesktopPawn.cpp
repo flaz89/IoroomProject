@@ -203,7 +203,7 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EnhancedInputComponent->BindAction(Zoom, ETriggerEvent::Triggered, CameraControl.Get(), &UCameraControlComponent::Zooming);
 
 		// RMB
-		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, this, &ADesktopPawn::LookAround);
+		EnhancedInputComponent->BindAction(Look, ETriggerEvent::Triggered, CameraControl.Get(), &UCameraControlComponent::LookAround);
 		EnhancedInputComponent->BindAction(LookActctivate, ETriggerEvent::Started, this, &ADesktopPawn::OnCameraControlStarted);
 		EnhancedInputComponent->BindAction(LookActctivate, ETriggerEvent::Completed, this, &ADesktopPawn::OnCameraControlStopped);
 
@@ -221,32 +221,6 @@ void ADesktopPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	{
 		UE_LOG(LogTemp, Error, TEXT("DesktopPawn / SetupPlayerInputComponent() -> No input component found"));
 	}
-}
-
-void ADesktopPawn::Server_Look_Implementation(FRotator NewRotation)
-{
-	if (!Controller) return;
-	Controller->SetControlRotation(NewRotation);
-	FaceRotation(NewRotation, 0.f);
-}
-
-void ADesktopPawn::ApplyLook(const FVector2D AxisValue)
-{
-	if (!Controller) return;
-	
-	FRotator NewRotation = Controller->GetControlRotation();
-	NewRotation.Yaw += AxisValue.X;
-	NewRotation.Pitch = FMath::Clamp(NewRotation.Pitch - AxisValue.Y, -89.f, 89.f);
-
-	Controller->SetControlRotation(NewRotation);
-	FaceRotation(NewRotation, 0.f);
-}
-
-void ADesktopPawn::LookAround(const FInputActionValue& Value)
-{
-	const FVector2D AxisValue = Value.Get<FVector2D>();
-	ApplyLook(AxisValue);
-	Server_Look(Controller->GetControlRotation());
 }
 
 void ADesktopPawn::Server_Pan_Implementation(FVector2D AxisValue)
@@ -674,6 +648,3 @@ void ADesktopPawn::OnCameraControlStopped()
 		bCameraControlActive = false;
 	}
 }
-
-
-

@@ -100,12 +100,6 @@ protected:
 	TObjectPtr<AFurnitureManipulator> ActiveManipulator;
 
 private:
-	// look functions
-	UFUNCTION(Server, Unreliable)
-	void Server_Look(FRotator NewRotation);
-	
-	void ApplyLook(FVector2D AxisValue);
-	void LookAround(const FInputActionValue& Value);
 	
 	// pan functions
 	UFUNCTION(Server, Unreliable)

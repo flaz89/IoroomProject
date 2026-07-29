@@ -101,7 +101,7 @@ void UCameraControlComponent::Zooming(const FInputActionValue& Value)
 void UCameraControlComponent::ApplyZoom(float ZoomFactor)
 {
 	if (!OwnerPawn) return;
-	AController* Controller = OwnerPawn->GetController();
+	const AController* Controller = OwnerPawn->GetController();
 	if (!Controller) return;
 	const FRotator ControllerRotation = Controller->GetControlRotation();
 
@@ -119,4 +119,57 @@ void UCameraControlComponent::ApplyZoom(float ZoomFactor)
 void UCameraControlComponent::Server_Zoom_Implementation(float ZoomFactor)
 {
 	ApplyZoom(ZoomFactor);
+}
+
+// -------------------------------------------------------------------------------------------------------------------- L O O K
+
+/**
+ * Processes input for camera rotation by applying look axis values
+ * and sending the computed rotation to the server.
+ *
+ * @param Value The input action value representing the look axis as a 2D vector.
+ */
+void UCameraControlComponent::LookAround(const FInputActionValue& Value)
+{
+	if (!OwnerPawn) return;
+	if (!OwnerPawn->GetController()) return;
+	
+	Server_Look(ApplyLook(Value.Get<FVector2D>()));
+}
+
+/**
+ * Adjusts the camera's orientation by applying input values to the yaw and pitch of the controller's rotation.
+ * Ensures the pitch value stays within a valid range to prevent extreme angles.
+ *
+ * @param AxisValue A 2D vector representing the input axis for camera look movement,
+ * where X modifies the yaw (horizontal rotation) and Y modifies the pitch (vertical rotation).
+ */
+FRotator UCameraControlComponent::ApplyLook(FVector2D AxisValue)
+{
+	if (!OwnerPawn) return FRotator(0.f);
+	AController* Controller = OwnerPawn->GetController();
+	if (!Controller) return FRotator(0.f);
+	
+	FRotator NewRotation = Controller->GetControlRotation();
+	NewRotation.Yaw += AxisValue.X;
+	NewRotation.Pitch = FMath::Clamp(NewRotation.Pitch - AxisValue.Y, -89.f, 89.f);
+
+	Controller->SetControlRotation(NewRotation);
+	OwnerPawn->FaceRotation(NewRotation, 0.f);
+	return NewRotation;
+}
+
+/**
+ * Updates the control rotation of the owning pawn's controller on the server
+ * and synchronizes the pawn's facing direction with the new rotation.
+ *
+ * @param NewRotation The desired rotation to be applied to the controller and pawn.
+ */
+void UCameraControlComponent::Server_Look_Implementation(FRotator NewRotation)
+{
+	if (!OwnerPawn) return;
+	AController* Controller = OwnerPawn->GetController();
+	if (!Controller) return;
+	Controller->SetControlRotation(NewRotation);
+	OwnerPawn->FaceRotation(NewRotation, 0.f);
 }

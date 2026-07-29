@@ -32,6 +32,7 @@ public:
 	// start functions bound to EnhancedInput in DesktopPawn.cpp 
 	void Movement(const FInputActionValue& Value);
 	void Zooming(const FInputActionValue& Value);
+	void LookAround(const FInputActionValue& Value);
 	// end functions
 	
 	
@@ -52,4 +53,11 @@ private:
 	UFUNCTION(Server, Unreliable)
 	void Server_Zoom(float ZoomFactor);
 	// end zoom functions
+	
+	// start look functions
+	FRotator ApplyLook(FVector2D AxisValue);
+	
+	UFUNCTION(Server, Unreliable)
+	void Server_Look(FRotator NewRotation);
+	// end look functions
 };
