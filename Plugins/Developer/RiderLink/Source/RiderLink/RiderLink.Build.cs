@@ -12,6 +12,7 @@ public class RiderLink : ModuleRules
 #endif
 		
 		bUseRTTI = true;
+		bEnableExceptions = true;
 
 #if UE_5_2_OR_LATER
 		bDisableStaticAnalysis = true;
@@ -20,6 +21,7 @@ public class RiderLink : ModuleRules
 		PublicDependencyModuleNames.Add("Core");
 		PublicDependencyModuleNames.Add("RD");
 		string[] Paths = {
+			"Public/Model",
 			"Public/Model/Library",
 			"Public/Model/RdEditorProtocol",
 		};

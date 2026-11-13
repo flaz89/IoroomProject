@@ -1,11 +1,6 @@
 #ifndef RD_CPP_BYTEBUFFERASYNCPROCESSOR_H
 #define RD_CPP_BYTEBUFFERASYNCPROCESSOR_H
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable:4251)
-#endif
-
 #include "protocol/Buffer.h"
 #include "spdlog/spdlog.h"
 
@@ -17,6 +12,8 @@
 #include <list>
 
 #include <rd_framework_export.h>
+
+RD_PUSH_STL_EXPORTS_WARNINGS
 
 namespace rd
 {
@@ -38,6 +35,7 @@ private:
 	using time_t = std::chrono::milliseconds;
 
 	static size_t INITIAL_CAPACITY;
+	static size_t DEFAULT_CHUNK_SIZE;
 
 	std::recursive_mutex lock;
 	std::condition_variable_any cv;
@@ -52,6 +50,7 @@ private:
 	std::thread::id async_thread_id;
 	std::future<void> async_future;
 
+	size_t chunk_size = DEFAULT_CHUNK_SIZE;
 	std::vector<Buffer::ByteArray> data;
 	std::mutex queue_lock;
 	std::deque<Buffer::ByteArray> queue{};
@@ -69,7 +68,7 @@ private:
 public:
 	// region ctor/dtor
 
-	explicit ByteBufferAsyncProcessor(std::string id, std::function<bool(Buffer::ByteArray const&, sequence_number_t)> processor);
+	explicit ByteBufferAsyncProcessor(std::string id, std::function<bool(Buffer::ByteArray const&, sequence_number_t)> processor, size_t chunk_size = DEFAULT_CHUNK_SIZE);
 
 	// endregion
 private:
@@ -78,6 +77,8 @@ private:
 	bool terminate0(time_t timeout, StateKind state_to_set, string_view action);
 
 	void add_data(std::vector<Buffer::ByteArray>&& new_data);
+
+	void cleanup_pending_queue();
 
 	bool reprocess();
 
@@ -103,9 +104,7 @@ public:
 
 std::string to_string(ByteBufferAsyncProcessor::StateKind state);
 }	 // namespace rd
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
+RD_POP_STL_EXPORTS_WARNINGS
 
 #endif	  // RD_CPP_BYTEBUFFERASYNCPROCESSOR_H

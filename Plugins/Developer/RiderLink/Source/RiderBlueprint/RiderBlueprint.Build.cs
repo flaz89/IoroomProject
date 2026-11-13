@@ -11,6 +11,7 @@ public class RiderBlueprint : ModuleRules
 #endif
 		
 		bUseRTTI = true;
+		bEnableExceptions = true;
 
 #if UE_5_2_OR_LATER
 		bDisableStaticAnalysis = true;
@@ -29,7 +30,8 @@ public class RiderBlueprint : ModuleRules
 			"UnrealEd",
 			"UnrealEdMessages",
 			"Engine",
-			"CoreUObject"
+			"CoreUObject",
+			"BlueprintGraph" // RIDER-140269, no version guard needed (module exists since UE 4.x)
 		});
 	}
 }
